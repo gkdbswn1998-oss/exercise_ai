@@ -52,7 +52,7 @@
 
 .navbar-logout {
   padding: 10px 20px;
-  background: #f44336;
+  background: #2196F3;
   color: white;
   border: none;
   border-radius: 8px;
@@ -63,7 +63,7 @@
 }
 
 .navbar-logout:hover {
-  background: #d32f2f;
+  background: #1976D2;
 }
 
 @media (max-width: 768px) {
