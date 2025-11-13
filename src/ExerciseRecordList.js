@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import './ExerciseRecordList.css';
-import { getExerciseRecordsByDateRange, saveExerciseRecord, uploadExerciseImages } from './exerciseApi';
+import { getExerciseRecordsByDateRange, saveExerciseRecord } from './exerciseApi';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 
 function ExerciseRecordList() {
@@ -11,8 +11,6 @@ function ExerciseRecordList() {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [message, setMessage] = useState('');
-  const [selectedImageUrls, setSelectedImageUrls] = useState([]);
-  const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [editingRecord, setEditingRecord] = useState(null);
   const [editFormData, setEditFormData] = useState({
     weight: '',
@@ -22,9 +20,6 @@ function ExerciseRecordList() {
     exerciseType: '',
     exerciseDuration: ''
   });
-  const [editImageUrls, setEditImageUrls] = useState([]);
-  const [editImagePreviews, setEditImagePreviews] = useState([]);
-  const [uploadingImage, setUploadingImage] = useState(false);
   const [saving, setSaving] = useState(false);
   const [selectedTab, setSelectedTab] = useState('항목별 조회');
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
@@ -307,23 +302,6 @@ function ExerciseRecordList() {
       exerciseDuration: record.exerciseDuration || ''
     });
     
-    // imageUrl 파싱
-    let urls = [];
-    if (record.imageUrl) {
-      try {
-        urls = JSON.parse(record.imageUrl);
-        if (!Array.isArray(urls)) {
-          urls = [record.imageUrl];
-        }
-      } catch (e) {
-        urls = [record.imageUrl];
-      }
-    }
-    setEditImageUrls(urls);
-    const previews = urls.map(url => 
-      url.startsWith('http') ? url : `${process.env.REACT_APP_API_URL || 'http://localhost:8080'}${url}`
-    );
-    setEditImagePreviews(previews);
   };
 
   const handleCloseEditModal = () => {
@@ -336,8 +314,6 @@ function ExerciseRecordList() {
       exerciseType: '',
       exerciseDuration: ''
     });
-    setEditImageUrls([]);
-    setEditImagePreviews([]);
   };
 
   const handleEditFormChange = (e) => {
@@ -348,55 +324,6 @@ function ExerciseRecordList() {
     }));
   };
 
-  const handleEditImageChange = async (e) => {
-    const files = Array.from(e.target.files || []);
-    if (files.length === 0) return;
-
-    const invalidFiles = files.filter(file => !file.type.startsWith('image/'));
-    if (invalidFiles.length > 0) {
-      setMessage('이미지 파일만 업로드 가능합니다.');
-      return;
-    }
-
-    const largeFiles = files.filter(file => file.size > 10 * 1024 * 1024);
-    if (largeFiles.length > 0) {
-      setMessage('파일 크기는 10MB 이하여야 합니다.');
-      return;
-    }
-
-    setUploadingImage(true);
-    setMessage('');
-
-    const previewPromises = files.map(file => {
-      return new Promise((resolve) => {
-        const reader = new FileReader();
-        reader.onloadend = () => resolve(reader.result);
-        reader.readAsDataURL(file);
-      });
-    });
-
-    try {
-      const newPreviews = await Promise.all(previewPromises);
-      setEditImagePreviews(prev => [...prev, ...newPreviews]);
-
-      const uploadedUrls = await uploadExerciseImages(files);
-      setEditImageUrls(prev => [...prev, ...uploadedUrls]);
-      setMessage(`${files.length}개의 사진이 업로드되었습니다.`);
-      setTimeout(() => setMessage(''), 3000);
-    } catch (error) {
-      console.error('이미지 업로드 오류:', error);
-      setMessage('사진 업로드에 실패했습니다.');
-      setEditImagePreviews(prev => prev.slice(0, prev.length - files.length));
-    } finally {
-      setUploadingImage(false);
-      e.target.value = '';
-    }
-  };
-
-  const handleRemoveEditImage = (index) => {
-    setEditImageUrls(prev => prev.filter((_, i) => i !== index));
-    setEditImagePreviews(prev => prev.filter((_, i) => i !== index));
-  };
 
   const handleSaveEdit = async () => {
     if (!editingRecord) return;
@@ -405,12 +332,9 @@ function ExerciseRecordList() {
     setMessage('');
 
     try {
-      const imageUrlJson = editImageUrls.length > 0 ? JSON.stringify(editImageUrls) : null;
-      
       const result = await saveExerciseRecord({
         recordDate: editingRecord.recordDate,
-        ...editFormData,
-        imageUrl: imageUrlJson
+        ...editFormData
       });
 
       if (result) {
@@ -428,74 +352,6 @@ function ExerciseRecordList() {
     }
   };
 
-  const handleViewImage = (imageUrl) => {
-    // imageUrl을 파싱 (JSON 배열 또는 단일 문자열)
-    let urls = [];
-    if (imageUrl) {
-      try {
-        urls = JSON.parse(imageUrl);
-        if (!Array.isArray(urls)) {
-          urls = [imageUrl]; // 단일 URL인 경우 배열로 변환
-        }
-      } catch (e) {
-        urls = [imageUrl]; // JSON이 아닌 경우 단일 URL로 처리
-      }
-    }
-    
-    // 전체 URL로 변환
-    const fullUrls = urls.map(url => 
-      url.startsWith('http') ? url : `${process.env.REACT_APP_API_URL || 'http://localhost:8080'}${url}`
-    );
-    
-    setSelectedImageUrls(fullUrls);
-    setCurrentImageIndex(0);
-  };
-
-  const handleCloseImage = () => {
-    setSelectedImageUrls([]);
-    setCurrentImageIndex(0);
-  };
-
-  const handlePrevImage = useCallback(() => {
-    setCurrentImageIndex(prev => (prev > 0 ? prev - 1 : selectedImageUrls.length - 1));
-  }, [selectedImageUrls.length]);
-
-  const handleNextImage = useCallback(() => {
-    setCurrentImageIndex(prev => (prev < selectedImageUrls.length - 1 ? prev + 1 : 0));
-  }, [selectedImageUrls.length]);
-
-  const handleCloseImageCallback = useCallback(() => {
-    setSelectedImageUrls([]);
-    setCurrentImageIndex(0);
-  }, []);
-
-  // 키보드 이벤트 처리 (화살표 키로 슬라이드)
-  useEffect(() => {
-    if (selectedImageUrls.length === 0) return;
-
-    const handleKeyDown = (e) => {
-      if (e.key === 'ArrowLeft') {
-        handlePrevImage();
-      } else if (e.key === 'ArrowRight') {
-        handleNextImage();
-      } else if (e.key === 'Escape') {
-        handleCloseImageCallback();
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [selectedImageUrls.length, handlePrevImage, handleNextImage, handleCloseImageCallback]);
-
-  // 현재 선택된 이미지가 갤러리에서 보이도록 스크롤
-  useEffect(() => {
-    if (selectedImageUrls.length === 0) return;
-    
-    const activeItem = document.querySelector('.image-modal-item.active');
-    if (activeItem) {
-      activeItem.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
-    }
-  }, [currentImageIndex, selectedImageUrls.length]);
 
   const currentRecords = getCurrentPageRecords();
 
@@ -666,16 +522,6 @@ function ExerciseRecordList() {
                         <span className="field-value">{record.exerciseDuration ? `${record.exerciseDuration}분` : '-'}</span>
                       </div>
                     </div>
-                    {record.imageUrl && (
-                      <div className="record-image-section">
-                        <button
-                          className="view-image-button"
-                          onClick={() => handleViewImage(record.imageUrl)}
-                        >
-                          사진 보기
-                        </button>
-                      </div>
-                    )}
                   </div>
                 </div>
               ))}
@@ -790,42 +636,8 @@ function ExerciseRecordList() {
                 </div>
               </div>
 
-              <div className="edit-form-group image-upload-group">
-                <label htmlFor="edit-image">사진 첨부 (여러 장 선택 가능)</label>
-                <div className="image-upload-container">
-                  <input
-                    type="file"
-                    id="edit-image"
-                    accept="image/*"
-                    multiple
-                    onChange={handleEditImageChange}
-                    disabled={uploadingImage}
-                    style={{ display: 'none' }}
-                  />
-                  <label htmlFor="edit-image" className="image-upload-button">
-                    {uploadingImage ? '업로드 중...' : '사진 선택'}
-                  </label>
-                  {editImagePreviews.length > 0 && (
-                    <div className="image-previews-grid">
-                      {editImagePreviews.map((preview, index) => (
-                        <div key={index} className="image-preview-container">
-                          <img src={preview} alt={`미리보기 ${index + 1}`} className="image-preview" />
-                          <button
-                            type="button"
-                            onClick={() => handleRemoveEditImage(index)}
-                            className="remove-image-button"
-                          >
-                            ×
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </div>
-
               {message && (
-                <div className={`message ${message.includes('수정') || message.includes('업로드') ? 'success' : 'error'}`}>
+                <div className={`message ${message.includes('수정') ? 'success' : 'error'}`}>
                   {message}
                 </div>
               )}
@@ -835,7 +647,7 @@ function ExerciseRecordList() {
               <button className="edit-cancel-button" onClick={handleCloseEditModal}>
                 취소
               </button>
-              <button className="edit-save-button" onClick={handleSaveEdit} disabled={saving || uploadingImage}>
+              <button className="edit-save-button" onClick={handleSaveEdit} disabled={saving}>
                 {saving ? '저장 중...' : '저장'}
               </button>
             </div>
@@ -843,45 +655,6 @@ function ExerciseRecordList() {
         </div>
       )}
 
-      {/* 이미지 모달 (슬라이드 갤러리) */}
-      {selectedImageUrls.length > 0 && (
-        <div className="image-modal-overlay" onClick={handleCloseImage}>
-          <div className="image-modal-content" onClick={(e) => e.stopPropagation()}>
-            <button className="image-modal-close" onClick={handleCloseImage}>×</button>
-            {selectedImageUrls.length > 1 && (
-              <>
-                <button className="image-modal-prev" onClick={handlePrevImage}>‹</button>
-                <button className="image-modal-next" onClick={handleNextImage}>›</button>
-                <div className="image-modal-counter">
-                  {currentImageIndex + 1} / {selectedImageUrls.length}
-                </div>
-              </>
-            )}
-            <div className="image-modal-gallery">
-              {selectedImageUrls.map((url, index) => (
-                <div 
-                  key={index} 
-                  className={`image-modal-item ${index === currentImageIndex ? 'active' : ''}`}
-                  onClick={() => setCurrentImageIndex(index)}
-                >
-                  <img 
-                    src={url} 
-                    alt={`운동 기록 사진 ${index + 1}`} 
-                    className="image-modal-image-small" 
-                  />
-                </div>
-              ))}
-            </div>
-            <div className="image-modal-main">
-              <img 
-                src={selectedImageUrls[currentImageIndex]} 
-                alt={`운동 기록 사진 ${currentImageIndex + 1}`} 
-                className="image-modal-image-main" 
-              />
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

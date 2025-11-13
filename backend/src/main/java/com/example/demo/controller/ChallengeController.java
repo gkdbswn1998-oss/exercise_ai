@@ -86,6 +86,47 @@ public class ChallengeController {
         return ResponseEntity.ok(responses);
     }
 
+    // 챌린지 목표 수정
+    @PutMapping("/{id}/targets")
+    public ResponseEntity<ChallengeResponse> updateChallengeTargets(
+            @PathVariable Long id,
+            @RequestBody ChallengeRequest request,
+            @RequestHeader(value = "X-User-Id", required = false) Long userId) {
+        
+        if (userId == null) {
+            userId = 1L;
+        }
+        
+        logger.info("✏️ 챌린지 목표 수정 - challengeId: {}, userId: {}", id, userId);
+        
+        try {
+            Challenge challenge = challengeRepository.findById(id)
+                    .orElse(null);
+            
+            if (challenge == null || !challenge.getUserId().equals(userId)) {
+                return ResponseEntity.notFound().build();
+            }
+            
+            // 목표 값만 업데이트 (이름, 날짜는 변경하지 않음)
+            // null 값도 명시적으로 업데이트 (값을 지우는 경우)
+            challenge.setTargetWeight(request.getTargetWeight());
+            challenge.setTargetBodyFatPercentage(request.getTargetBodyFatPercentage());
+            challenge.setTargetMuscleMass(request.getTargetMuscleMass());
+            challenge.setTargetMusclePercentage(request.getTargetMusclePercentage());
+            challenge.setTargetExerciseDuration(request.getTargetExerciseDuration());
+            
+            Challenge updatedChallenge = challengeRepository.save(challenge);
+            logger.info("✅ 챌린지 목표 수정 완료 - id: {}", updatedChallenge.getId());
+            
+            ChallengeResponse response = convertToResponse(updatedChallenge);
+            return ResponseEntity.ok(response);
+            
+        } catch (Exception e) {
+            logger.error("❌ 챌린지 목표 수정 중 오류 발생", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
     // 챌린지 상세 조회
     @GetMapping("/{id}")
     public ResponseEntity<ChallengeDetailResponse> getChallengeDetail(

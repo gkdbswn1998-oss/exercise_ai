@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import './ExerciseRecord.css';
 import { getCurrentUser } from './auth';
-import { getExerciseRecord, saveExerciseRecord, uploadExerciseImages, getExerciseRecordsByDateRange } from './exerciseApi';
+import { getExerciseRecord, saveExerciseRecord, getExerciseRecordsByDateRange } from './exerciseApi';
 
 function ExerciseRecord() {
   const [selectedDate, setSelectedDate] = useState(new Date());
@@ -13,10 +13,6 @@ function ExerciseRecord() {
     exerciseType: '',
     exerciseDuration: ''
   });
-  const [selectedImages, setSelectedImages] = useState([]);
-  const [imagePreviews, setImagePreviews] = useState([]);
-  const [imageUrls, setImageUrls] = useState([]);
-  const [uploadingImage, setUploadingImage] = useState(false);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
@@ -64,23 +60,6 @@ function ExerciseRecord() {
           exerciseDuration: record.exerciseDuration || ''
         });
         
-        // imageUrl을 파싱 (JSON 배열 또는 단일 문자열)
-        let urls = [];
-        if (record.imageUrl) {
-          try {
-            urls = JSON.parse(record.imageUrl);
-            if (!Array.isArray(urls)) {
-              urls = [record.imageUrl]; // 단일 URL인 경우 배열로 변환
-            }
-          } catch (e) {
-            urls = [record.imageUrl]; // JSON이 아닌 경우 단일 URL로 처리
-          }
-        }
-        setImageUrls(urls);
-        const previews = urls.map(url => 
-          url.startsWith('http') ? url : `${process.env.REACT_APP_API_URL || 'http://localhost:8080'}${url}`
-        );
-        setImagePreviews(previews);
       } else {
         // 기록이 없으면 폼 초기화 (정상적인 상황)
         setFormData({
@@ -91,9 +70,6 @@ function ExerciseRecord() {
           exerciseType: '',
           exerciseDuration: ''
         });
-        setImageUrls([]);
-        setImagePreviews([]);
-        setSelectedImages([]);
         // 기록이 없으면 불완전한 기록 목록에서도 제거
         const dateStr = formatDate(selectedDate);
         setIncompleteRecordDates(prev => {
@@ -129,64 +105,6 @@ function ExerciseRecord() {
     setMessage('');
   };
 
-  const handleImageChange = async (e) => {
-    const files = Array.from(e.target.files || []);
-    if (files.length === 0) return;
-
-    // 이미지 파일인지 확인
-    const invalidFiles = files.filter(file => !file.type.startsWith('image/'));
-    if (invalidFiles.length > 0) {
-      setMessage('이미지 파일만 업로드 가능합니다.');
-      return;
-    }
-
-    // 파일 크기 확인 (10MB 제한)
-    const largeFiles = files.filter(file => file.size > 10 * 1024 * 1024);
-    if (largeFiles.length > 0) {
-      setMessage('파일 크기는 10MB 이하여야 합니다.');
-      return;
-    }
-
-    setUploadingImage(true);
-    setMessage('');
-
-    // 미리보기 생성 (Promise로 처리)
-    const previewPromises = files.map(file => {
-      return new Promise((resolve) => {
-        const reader = new FileReader();
-        reader.onloadend = () => resolve(reader.result);
-        reader.readAsDataURL(file);
-      });
-    });
-
-    try {
-      // 모든 미리보기 생성 대기
-      const newPreviews = await Promise.all(previewPromises);
-      setImagePreviews(prev => [...prev, ...newPreviews]);
-
-      // 여러 파일 업로드
-      const uploadedUrls = await uploadExerciseImages(files);
-      setImageUrls(prev => [...prev, ...uploadedUrls]);
-      setSelectedImages(prev => [...prev, ...files]);
-      setMessage(`${files.length}개의 사진이 업로드되었습니다.`);
-      setTimeout(() => setMessage(''), 3000);
-    } catch (error) {
-      console.error('이미지 업로드 오류:', error);
-      setMessage('사진 업로드에 실패했습니다.');
-      // 실패한 파일의 미리보기 제거
-      setImagePreviews(prev => prev.slice(0, prev.length - files.length));
-    } finally {
-      setUploadingImage(false);
-      // input 초기화
-      e.target.value = '';
-    }
-  };
-
-  const handleRemoveImage = (index) => {
-    setImageUrls(prev => prev.filter((_, i) => i !== index));
-    setImagePreviews(prev => prev.filter((_, i) => i !== index));
-    setSelectedImages(prev => prev.filter((_, i) => i !== index));
-  };
 
   // 날짜 문자열 정규화 함수
   const normalizeDateString = (dateValue) => {
@@ -284,20 +202,15 @@ function ExerciseRecord() {
 
     try {
       const dateStr = formatDate(selectedDate);
-      // imageUrls를 JSON 문자열로 변환
-      const imageUrlJson = imageUrls.length > 0 ? JSON.stringify(imageUrls) : null;
       
       const result = await saveExerciseRecord({
         recordDate: dateStr,
-        ...formData,
-        imageUrl: imageUrlJson
+        ...formData
       });
 
       if (result) {
         setMessage('기록이 저장되었습니다!');
         setTimeout(() => setMessage(''), 3000);
-        // 저장 후 선택된 이미지 초기화 (이미 URL로 저장되었으므로)
-        setSelectedImages([]);
         // 기록이 있는 날짜에 즉시 추가 (모든 필드가 채워져 있는지 확인)
         const hasAllFields = formData.weight && 
                             formData.bodyFatPercentage && 
@@ -311,8 +224,7 @@ function ExerciseRecord() {
                            formData.muscleMass || 
                            formData.musclePercentage || 
                            formData.exerciseType || 
-                           formData.exerciseDuration || 
-                           imageUrls.length > 0;
+                           formData.exerciseDuration;
         
         if (hasAllFields) {
           // 모든 필드가 채워져 있으면 초록원
@@ -534,47 +446,13 @@ function ExerciseRecord() {
               </div>
             </div>
 
-            <div className="form-group image-upload-group">
-              <label htmlFor="image">사진 첨부 (여러 장 선택 가능)</label>
-              <div className="image-upload-container">
-                <input
-                  type="file"
-                  id="image"
-                  accept="image/*"
-                  multiple
-                  onChange={handleImageChange}
-                  disabled={uploadingImage}
-                  style={{ display: 'none' }}
-                />
-                <label htmlFor="image" className="image-upload-button">
-                  {uploadingImage ? '업로드 중...' : '사진 선택'}
-                </label>
-                {imagePreviews.length > 0 && (
-                  <div className="image-previews-grid">
-                    {imagePreviews.map((preview, index) => (
-                      <div key={index} className="image-preview-container">
-                        <img src={preview} alt={`미리보기 ${index + 1}`} className="image-preview" />
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveImage(index)}
-                          className="remove-image-button"
-                        >
-                          ×
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
-
             {message && (
-              <div className={`message ${message.includes('저장') || message.includes('업로드') ? 'success' : 'error'}`}>
+              <div className={`message ${message.includes('저장') ? 'success' : 'error'}`}>
                 {message}
               </div>
             )}
 
-            <button type="submit" className="save-button" disabled={saving || uploadingImage}>
+            <button type="submit" className="save-button" disabled={saving}>
               {saving ? '저장 중...' : '저장'}
             </button>
           </form>
