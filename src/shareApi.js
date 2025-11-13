@@ -201,4 +201,29 @@ export async function getSharedChallengeDetail(shareId) {
   }
 }
 
+/**
+ * 특정 챌린지의 공유된 사용자 목록 조회
+ */
+export async function getSharedUsersByChallenge(challengeId) {
+  try {
+    const user = JSON.parse(localStorage.getItem('user') || '{}');
+    const userId = user.id || 1;
+
+    // 보낸 공유 요청 중에서 수락된 것만 필터링
+    const sentShares = await getSentShares();
+    const acceptedShares = sentShares.filter(share => 
+      share.challengeId === challengeId && share.status === 'ACCEPTED'
+    );
+    
+    // 공유된 사용자 ID 목록 반환
+    return acceptedShares.map(share => ({
+      id: share.toUserId,
+      name: share.toUserName || `사용자 ${share.toUserId}`
+    }));
+  } catch (error) {
+    console.error('공유된 사용자 조회 오류:', error);
+    return [];
+  }
+}
+
 

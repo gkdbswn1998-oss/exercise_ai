@@ -23,19 +23,19 @@
 
 .create-button {
   padding: 12px 24px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: #000;
   color: white;
   border: none;
   border-radius: 8px;
   font-size: 16px;
   font-weight: 600;
   cursor: pointer;
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  transition: all 0.2s ease;
 }
 
 .create-button:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+  background: #333;
+  transform: translateY(-1px);
 }
 
 .tab-container {
@@ -62,14 +62,20 @@
 }
 
 .tab-button:hover {
-  border-color: #667eea;
-  color: #667eea;
+  border-color: #000;
+  color: #000;
 }
 
 .tab-button.active {
-  background: #667eea;
-  border-color: #667eea;
-  color: white;
+  background: #000;
+  border-color: #000;
+  color: white !important;
+}
+
+.tab-button.active:hover {
+  background: #000;
+  border-color: #000;
+  color: white !important;
 }
 
 .challenges-list {
@@ -110,9 +116,15 @@
   font-size: 14px;
 }
 
+.challenge-actions {
+  display: flex;
+  gap: 15px;
+  align-items: center;
+}
+
 .detail-button {
   padding: 10px 20px;
-  background: #667eea;
+  background: #000;
   color: white;
   border: none;
   border-radius: 8px;
@@ -123,7 +135,83 @@
 }
 
 .detail-button:hover {
-  background: #5568d3;
+  background: #333;
+}
+
+.share-button {
+  padding: 10px 20px;
+  background: #000;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.3s ease;
+}
+
+.share-button:hover {
+  background: #333;
+}
+
+.shared-users-container {
+  position: absolute;
+  right: 280px;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.shared-users-icon {
+  font-size: 20px;
+  cursor: pointer;
+  color: #666;
+}
+
+.shared-users-tooltip {
+  position: absolute;
+  bottom: 100%;
+  right: 0;
+  margin-bottom: 10px;
+  padding: 10px 15px;
+  background: #333;
+  color: white;
+  border-radius: 8px;
+  font-size: 12px;
+  white-space: nowrap;
+  z-index: 1000;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+.shared-users-tooltip::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  right: 20px;
+  border: 6px solid transparent;
+  border-top-color: #333;
+}
+
+.share-form-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.share-form-modal-content {
+  background: white;
+  border-radius: 12px;
+  max-width: 600px;
+  width: 90%;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
 }
 
 .loading,

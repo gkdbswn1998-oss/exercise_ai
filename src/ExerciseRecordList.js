@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import './ExerciseRecordList.css';
-import { getExerciseRecordsByDateRange } from './exerciseApi';
+import { getExerciseRecordsByDateRange, saveExerciseRecord, uploadExerciseImages } from './exerciseApi';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 
 function ExerciseRecordList() {
   const [startDate, setStartDate] = useState('');
@@ -10,8 +11,27 @@ function ExerciseRecordList() {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [message, setMessage] = useState('');
+  const [selectedImageUrls, setSelectedImageUrls] = useState([]);
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [editingRecord, setEditingRecord] = useState(null);
+  const [editFormData, setEditFormData] = useState({
+    weight: '',
+    bodyFatPercentage: '',
+    muscleMass: '',
+    musclePercentage: '',
+    exerciseType: '',
+    exerciseDuration: ''
+  });
+  const [editImageUrls, setEditImageUrls] = useState([]);
+  const [editImagePreviews, setEditImagePreviews] = useState([]);
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [selectedTab, setSelectedTab] = useState('항목별 조회');
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
   const recordsPerPage = 10;
+  
+  const tabOptions = ['항목별 조회', '체중', '체지방률', '근육량', '근육률', '운동종류', '운동시간'];
 
   // 오늘 날짜를 기본값으로 설정
   useEffect(() => {
@@ -28,7 +48,28 @@ function ExerciseRecordList() {
     if (startDate && endDate) {
       handleSearch();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [startDate, endDate]);
+
+  // 탭 변경 시 페이지 수 재계산
+  useEffect(() => {
+    if (records.length > 0) {
+      const filteredCount = selectedTab === '항목별 조회' ? records.length : 
+        records.filter(record => {
+          switch (selectedTab) {
+            case '체중': return record.weight && record.weight !== '';
+            case '체지방률': return record.bodyFatPercentage && record.bodyFatPercentage !== '';
+            case '근육량': return record.muscleMass && record.muscleMass !== '';
+            case '근육률': return record.musclePercentage && record.musclePercentage !== '';
+            case '운동종류': return record.exerciseType && record.exerciseType !== '';
+            case '운동시간': return record.exerciseDuration && record.exerciseDuration !== '';
+            default: return true;
+          }
+        }).length;
+      setTotalPages(Math.ceil(filteredCount / recordsPerPage));
+      setCurrentPage(1);
+    }
+  }, [selectedTab, records]);
 
   const formatDate = (date) => {
     if (typeof date === 'string') return date;
@@ -70,7 +111,6 @@ function ExerciseRecordList() {
       allRecords.sort((a, b) => new Date(b.recordDate) - new Date(a.recordDate));
       
       setRecords(allRecords);
-      setTotalPages(Math.ceil(allRecords.length / recordsPerPage));
     } catch (error) {
       console.error('기록 조회 오류:', error);
       setMessage('기록을 불러오는 중 오류가 발생했습니다.');
@@ -81,11 +121,141 @@ function ExerciseRecordList() {
     }
   };
 
+  // 탭별 필터링된 기록들
+  const getFilteredRecords = () => {
+    if (selectedTab === '항목별 조회') {
+      return records;
+    }
+    
+    return records.filter(record => {
+      switch (selectedTab) {
+        case '체중':
+          return record.weight && record.weight !== '';
+        case '체지방률':
+          return record.bodyFatPercentage && record.bodyFatPercentage !== '';
+        case '근육량':
+          return record.muscleMass && record.muscleMass !== '';
+        case '근육률':
+          return record.musclePercentage && record.musclePercentage !== '';
+        case '운동종류':
+          return record.exerciseType && record.exerciseType !== '';
+        case '운동시간':
+          return record.exerciseDuration && record.exerciseDuration !== '';
+        default:
+          return true;
+      }
+    });
+  };
+
   // 현재 페이지의 기록들
   const getCurrentPageRecords = () => {
+    const filteredRecords = getFilteredRecords();
     const startIndex = (currentPage - 1) * recordsPerPage;
     const endIndex = startIndex + recordsPerPage;
-    return records.slice(startIndex, endIndex);
+    return filteredRecords.slice(startIndex, endIndex);
+  };
+
+  // 필터링된 기록의 총 개수
+  const filteredRecordsCount = getFilteredRecords().length;
+
+  // 그래프 데이터 준비
+  const chartData = useMemo(() => {
+    if (selectedTab === '항목별 조회' || selectedTab === '운동종류') {
+      return [];
+    }
+
+    // 필터링된 기록 가져오기
+    let filteredRecords = [];
+    if (selectedTab === '항목별 조회') {
+      filteredRecords = records;
+    } else {
+      filteredRecords = records.filter(record => {
+        switch (selectedTab) {
+          case '체중':
+            return record.weight && record.weight !== '';
+          case '체지방률':
+            return record.bodyFatPercentage && record.bodyFatPercentage !== '';
+          case '근육량':
+            return record.muscleMass && record.muscleMass !== '';
+          case '근육률':
+            return record.musclePercentage && record.musclePercentage !== '';
+          case '운동시간':
+            return record.exerciseDuration && record.exerciseDuration !== '';
+          default:
+            return true;
+        }
+      });
+    }
+
+    if (filteredRecords.length === 0) {
+      return [];
+    }
+
+    // 날짜순으로 정렬 (오름차순)
+    const sortedRecords = [...filteredRecords].sort((a, b) => 
+      new Date(a.recordDate) - new Date(b.recordDate)
+    );
+
+    return sortedRecords.map(record => {
+      let value = null;
+      let label = '';
+
+      switch (selectedTab) {
+        case '체중':
+          value = record.weight ? parseFloat(record.weight) : null;
+          label = '체중 (kg)';
+          break;
+        case '체지방률':
+          value = record.bodyFatPercentage ? parseFloat(record.bodyFatPercentage) : null;
+          label = '체지방률 (%)';
+          break;
+        case '근육량':
+          value = record.muscleMass ? parseFloat(record.muscleMass) : null;
+          label = '근육량 (kg)';
+          break;
+        case '근육률':
+          value = record.musclePercentage ? parseFloat(record.musclePercentage) : null;
+          label = '근육률 (%)';
+          break;
+        case '운동시간':
+          value = record.exerciseDuration ? parseInt(record.exerciseDuration) : null;
+          label = '운동시간 (분)';
+          break;
+        default:
+          return null;
+      }
+
+      if (value === null) return null;
+
+      const date = new Date(record.recordDate);
+      const month = date.getMonth() + 1;
+      const day = date.getDate();
+
+      return {
+        date: `${month}/${day}`,
+        fullDate: record.recordDate,
+        value: value,
+        label: label
+      };
+    }).filter(item => item !== null);
+  }, [selectedTab, records]);
+
+  // 그래프 Y축 레이블
+  const getYAxisLabel = () => {
+    switch (selectedTab) {
+      case '체중':
+        return '체중 (kg)';
+      case '체지방률':
+        return '체지방률 (%)';
+      case '근육량':
+        return '근육량 (kg)';
+      case '근육률':
+        return '근육률 (%)';
+      case '운동시간':
+        return '운동시간 (분)';
+      default:
+        return '';
+    }
   };
 
   const handlePrevPage = () => {
@@ -99,6 +269,233 @@ function ExerciseRecordList() {
       setCurrentPage(currentPage + 1);
     }
   };
+
+  const handleTabChange = (tab) => {
+    setSelectedTab(tab);
+    setCurrentPage(1);
+    setIsDropdownOpen(false);
+  };
+
+  const handleDropdownToggle = () => {
+    setIsDropdownOpen(!isDropdownOpen);
+  };
+
+  // 외부 클릭 시 드롭다운 닫기
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (isDropdownOpen && !event.target.closest('.tab-section')) {
+        setIsDropdownOpen(false);
+      }
+    };
+
+    if (isDropdownOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => {
+        document.removeEventListener('mousedown', handleClickOutside);
+      };
+    }
+  }, [isDropdownOpen]);
+
+  const handleEditRecord = (record) => {
+    setEditingRecord(record);
+    setEditFormData({
+      weight: record.weight || '',
+      bodyFatPercentage: record.bodyFatPercentage || '',
+      muscleMass: record.muscleMass || '',
+      musclePercentage: record.musclePercentage || '',
+      exerciseType: record.exerciseType || '',
+      exerciseDuration: record.exerciseDuration || ''
+    });
+    
+    // imageUrl 파싱
+    let urls = [];
+    if (record.imageUrl) {
+      try {
+        urls = JSON.parse(record.imageUrl);
+        if (!Array.isArray(urls)) {
+          urls = [record.imageUrl];
+        }
+      } catch (e) {
+        urls = [record.imageUrl];
+      }
+    }
+    setEditImageUrls(urls);
+    const previews = urls.map(url => 
+      url.startsWith('http') ? url : `${process.env.REACT_APP_API_URL || 'http://localhost:8080'}${url}`
+    );
+    setEditImagePreviews(previews);
+  };
+
+  const handleCloseEditModal = () => {
+    setEditingRecord(null);
+    setEditFormData({
+      weight: '',
+      bodyFatPercentage: '',
+      muscleMass: '',
+      musclePercentage: '',
+      exerciseType: '',
+      exerciseDuration: ''
+    });
+    setEditImageUrls([]);
+    setEditImagePreviews([]);
+  };
+
+  const handleEditFormChange = (e) => {
+    const { name, value } = e.target;
+    setEditFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
+  const handleEditImageChange = async (e) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
+
+    const invalidFiles = files.filter(file => !file.type.startsWith('image/'));
+    if (invalidFiles.length > 0) {
+      setMessage('이미지 파일만 업로드 가능합니다.');
+      return;
+    }
+
+    const largeFiles = files.filter(file => file.size > 10 * 1024 * 1024);
+    if (largeFiles.length > 0) {
+      setMessage('파일 크기는 10MB 이하여야 합니다.');
+      return;
+    }
+
+    setUploadingImage(true);
+    setMessage('');
+
+    const previewPromises = files.map(file => {
+      return new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result);
+        reader.readAsDataURL(file);
+      });
+    });
+
+    try {
+      const newPreviews = await Promise.all(previewPromises);
+      setEditImagePreviews(prev => [...prev, ...newPreviews]);
+
+      const uploadedUrls = await uploadExerciseImages(files);
+      setEditImageUrls(prev => [...prev, ...uploadedUrls]);
+      setMessage(`${files.length}개의 사진이 업로드되었습니다.`);
+      setTimeout(() => setMessage(''), 3000);
+    } catch (error) {
+      console.error('이미지 업로드 오류:', error);
+      setMessage('사진 업로드에 실패했습니다.');
+      setEditImagePreviews(prev => prev.slice(0, prev.length - files.length));
+    } finally {
+      setUploadingImage(false);
+      e.target.value = '';
+    }
+  };
+
+  const handleRemoveEditImage = (index) => {
+    setEditImageUrls(prev => prev.filter((_, i) => i !== index));
+    setEditImagePreviews(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editingRecord) return;
+
+    setSaving(true);
+    setMessage('');
+
+    try {
+      const imageUrlJson = editImageUrls.length > 0 ? JSON.stringify(editImageUrls) : null;
+      
+      const result = await saveExerciseRecord({
+        recordDate: editingRecord.recordDate,
+        ...editFormData,
+        imageUrl: imageUrlJson
+      });
+
+      if (result) {
+        setMessage('기록이 수정되었습니다!');
+        setTimeout(() => setMessage(''), 3000);
+        handleCloseEditModal();
+        // 목록 새로고침
+        handleSearch();
+      }
+    } catch (error) {
+      console.error('기록 수정 오류:', error);
+      setMessage('기록 수정 중 오류가 발생했습니다.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleViewImage = (imageUrl) => {
+    // imageUrl을 파싱 (JSON 배열 또는 단일 문자열)
+    let urls = [];
+    if (imageUrl) {
+      try {
+        urls = JSON.parse(imageUrl);
+        if (!Array.isArray(urls)) {
+          urls = [imageUrl]; // 단일 URL인 경우 배열로 변환
+        }
+      } catch (e) {
+        urls = [imageUrl]; // JSON이 아닌 경우 단일 URL로 처리
+      }
+    }
+    
+    // 전체 URL로 변환
+    const fullUrls = urls.map(url => 
+      url.startsWith('http') ? url : `${process.env.REACT_APP_API_URL || 'http://localhost:8080'}${url}`
+    );
+    
+    setSelectedImageUrls(fullUrls);
+    setCurrentImageIndex(0);
+  };
+
+  const handleCloseImage = () => {
+    setSelectedImageUrls([]);
+    setCurrentImageIndex(0);
+  };
+
+  const handlePrevImage = useCallback(() => {
+    setCurrentImageIndex(prev => (prev > 0 ? prev - 1 : selectedImageUrls.length - 1));
+  }, [selectedImageUrls.length]);
+
+  const handleNextImage = useCallback(() => {
+    setCurrentImageIndex(prev => (prev < selectedImageUrls.length - 1 ? prev + 1 : 0));
+  }, [selectedImageUrls.length]);
+
+  const handleCloseImageCallback = useCallback(() => {
+    setSelectedImageUrls([]);
+    setCurrentImageIndex(0);
+  }, []);
+
+  // 키보드 이벤트 처리 (화살표 키로 슬라이드)
+  useEffect(() => {
+    if (selectedImageUrls.length === 0) return;
+
+    const handleKeyDown = (e) => {
+      if (e.key === 'ArrowLeft') {
+        handlePrevImage();
+      } else if (e.key === 'ArrowRight') {
+        handleNextImage();
+      } else if (e.key === 'Escape') {
+        handleCloseImageCallback();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [selectedImageUrls.length, handlePrevImage, handleNextImage, handleCloseImageCallback]);
+
+  // 현재 선택된 이미지가 갤러리에서 보이도록 스크롤
+  useEffect(() => {
+    if (selectedImageUrls.length === 0) return;
+    
+    const activeItem = document.querySelector('.image-modal-item.active');
+    if (activeItem) {
+      activeItem.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+    }
+  }, [currentImageIndex, selectedImageUrls.length]);
 
   const currentRecords = getCurrentPageRecords();
 
@@ -137,22 +534,106 @@ function ExerciseRecordList() {
         )}
       </div>
 
+      {/* 탭 섹션 */}
+      <div className="tab-section">
+        <div className="tab-section-content">
+          <div className="tab-dropdown-container">
+            <button
+              className={`tab-dropdown-button ${isDropdownOpen ? 'open' : ''}`}
+              onClick={handleDropdownToggle}
+            >
+              <span>{selectedTab}</span>
+              <span className="dropdown-arrow">{isDropdownOpen ? '▲' : '▼'}</span>
+            </button>
+            {isDropdownOpen && (
+              <div className="tab-dropdown-menu">
+                {tabOptions.map((option) => (
+                  <button
+                    key={option}
+                    className={`tab-dropdown-item ${selectedTab === option ? 'active' : ''}`}
+                    onClick={() => handleTabChange(option)}
+                  >
+                    {option}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* 그래프 섹션 */}
+          {selectedTab !== '항목별 조회' && selectedTab !== '운동종류' && chartData.length > 0 && (
+            <div className="chart-section-inline">
+              <div className="chart-container-inline">
+                <h4 className="chart-title-inline">{selectedTab} 추이</h4>
+                <ResponsiveContainer width="100%" height={250}>
+                  <LineChart data={chartData} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
+                    <XAxis 
+                      dataKey="date" 
+                      stroke="#666"
+                      style={{ fontSize: '12px' }}
+                    />
+                    <YAxis 
+                      stroke="#666"
+                      style={{ fontSize: '12px' }}
+                      label={{ value: getYAxisLabel(), angle: -90, position: 'insideLeft', style: { fontSize: '12px' } }}
+                    />
+                    <Tooltip 
+                      contentStyle={{ 
+                        backgroundColor: '#fff', 
+                        border: '1px solid #e0e0e0',
+                        borderRadius: '8px',
+                        fontSize: '12px'
+                      }}
+                      formatter={(value) => {
+                        const unit = selectedTab === '체중' || selectedTab === '근육량' ? 'kg' : 
+                                     selectedTab === '체지방률' || selectedTab === '근육률' ? '%' : '분';
+                        return [`${value}${unit}`, selectedTab];
+                      }}
+                      labelFormatter={(label) => `날짜: ${label}`}
+                    />
+                    <Line 
+                      type="monotone" 
+                      dataKey="value" 
+                      stroke="#000" 
+                      strokeWidth={2}
+                      dot={{ fill: '#000', r: 4 }}
+                      activeDot={{ r: 6 }}
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
       <div className="records-section">
         {loading ? (
           <div className="loading">기록을 불러오는 중...</div>
         ) : records.length === 0 ? (
           <div className="no-records">조회된 기록이 없습니다.</div>
+        ) : filteredRecordsCount === 0 ? (
+          <div className="no-records">{selectedTab} 기록이 없습니다.</div>
         ) : (
           <>
             <div className="records-header">
-              <h3>총 {records.length}건의 기록</h3>
+              <h3>기록 {records.length}건</h3>
             </div>
             
             <div className="records-list">
               {currentRecords.map((record) => (
                 <div key={record.id} className="record-item">
-                  <div className="record-date">
-                    {formatDisplayDate(record.recordDate)}
+                  <div className="record-date-header">
+                    <div className="record-date">
+                      {formatDisplayDate(record.recordDate)}
+                    </div>
+                    <button
+                      className="edit-record-button"
+                      onClick={() => handleEditRecord(record)}
+                    >
+                      수정하기
+                    </button>
                   </div>
                   <div className="record-content">
                     <div className="record-row">
@@ -185,6 +666,16 @@ function ExerciseRecordList() {
                         <span className="field-value">{record.exerciseDuration ? `${record.exerciseDuration}분` : '-'}</span>
                       </div>
                     </div>
+                    {record.imageUrl && (
+                      <div className="record-image-section">
+                        <button
+                          className="view-image-button"
+                          onClick={() => handleViewImage(record.imageUrl)}
+                        >
+                          사진 보기
+                        </button>
+                      </div>
+                    )}
                   </div>
                 </div>
               ))}
@@ -214,6 +705,183 @@ function ExerciseRecordList() {
           </>
         )}
       </div>
+
+      {/* 수정 모달 */}
+      {editingRecord && (
+        <div className="edit-modal-overlay" onClick={handleCloseEditModal}>
+          <div className="edit-modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="edit-modal-header">
+              <h2>운동 기록 수정</h2>
+              <button className="edit-modal-close" onClick={handleCloseEditModal}>×</button>
+            </div>
+            
+            <div className="edit-modal-body">
+              <div className="edit-form-row">
+                <div className="edit-form-group">
+                  <label>체중 (kg)</label>
+                  <input
+                    type="number"
+                    name="weight"
+                    value={editFormData.weight}
+                    onChange={handleEditFormChange}
+                    placeholder="예: 70.5"
+                    step="0.1"
+                  />
+                </div>
+                <div className="edit-form-group">
+                  <label>체지방률 (%)</label>
+                  <input
+                    type="number"
+                    name="bodyFatPercentage"
+                    value={editFormData.bodyFatPercentage}
+                    onChange={handleEditFormChange}
+                    placeholder="예: 15.5"
+                    step="0.1"
+                  />
+                </div>
+              </div>
+
+              <div className="edit-form-row">
+                <div className="edit-form-group">
+                  <label>근육량 (kg)</label>
+                  <input
+                    type="number"
+                    name="muscleMass"
+                    value={editFormData.muscleMass}
+                    onChange={handleEditFormChange}
+                    placeholder="예: 55.0"
+                    step="0.1"
+                  />
+                </div>
+                <div className="edit-form-group">
+                  <label>근육률 (%)</label>
+                  <input
+                    type="number"
+                    name="musclePercentage"
+                    value={editFormData.musclePercentage}
+                    onChange={handleEditFormChange}
+                    placeholder="예: 45.0"
+                    step="0.1"
+                  />
+                </div>
+              </div>
+
+              <div className="edit-form-row">
+                <div className="edit-form-group">
+                  <label>운동종류</label>
+                  <input
+                    type="text"
+                    name="exerciseType"
+                    value={editFormData.exerciseType}
+                    onChange={handleEditFormChange}
+                    placeholder="예: 러닝, 헬스, 테니스"
+                  />
+                </div>
+                <div className="edit-form-group">
+                  <label>운동시간 (분)</label>
+                  <input
+                    type="number"
+                    name="exerciseDuration"
+                    value={editFormData.exerciseDuration}
+                    onChange={handleEditFormChange}
+                    placeholder="예: 60"
+                    min="0"
+                  />
+                </div>
+              </div>
+
+              <div className="edit-form-group image-upload-group">
+                <label htmlFor="edit-image">사진 첨부 (여러 장 선택 가능)</label>
+                <div className="image-upload-container">
+                  <input
+                    type="file"
+                    id="edit-image"
+                    accept="image/*"
+                    multiple
+                    onChange={handleEditImageChange}
+                    disabled={uploadingImage}
+                    style={{ display: 'none' }}
+                  />
+                  <label htmlFor="edit-image" className="image-upload-button">
+                    {uploadingImage ? '업로드 중...' : '사진 선택'}
+                  </label>
+                  {editImagePreviews.length > 0 && (
+                    <div className="image-previews-grid">
+                      {editImagePreviews.map((preview, index) => (
+                        <div key={index} className="image-preview-container">
+                          <img src={preview} alt={`미리보기 ${index + 1}`} className="image-preview" />
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveEditImage(index)}
+                            className="remove-image-button"
+                          >
+                            ×
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {message && (
+                <div className={`message ${message.includes('수정') || message.includes('업로드') ? 'success' : 'error'}`}>
+                  {message}
+                </div>
+              )}
+            </div>
+
+            <div className="edit-modal-footer">
+              <button className="edit-cancel-button" onClick={handleCloseEditModal}>
+                취소
+              </button>
+              <button className="edit-save-button" onClick={handleSaveEdit} disabled={saving || uploadingImage}>
+                {saving ? '저장 중...' : '저장'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 이미지 모달 (슬라이드 갤러리) */}
+      {selectedImageUrls.length > 0 && (
+        <div className="image-modal-overlay" onClick={handleCloseImage}>
+          <div className="image-modal-content" onClick={(e) => e.stopPropagation()}>
+            <button className="image-modal-close" onClick={handleCloseImage}>×</button>
+            {selectedImageUrls.length > 1 && (
+              <>
+                <button className="image-modal-prev" onClick={handlePrevImage}>‹</button>
+                <button className="image-modal-next" onClick={handleNextImage}>›</button>
+                <div className="image-modal-counter">
+                  {currentImageIndex + 1} / {selectedImageUrls.length}
+                </div>
+              </>
+            )}
+            <div className="image-modal-gallery">
+              {selectedImageUrls.map((url, index) => (
+                <div 
+                  key={index} 
+                  className={`image-modal-item ${index === currentImageIndex ? 'active' : ''}`}
+                  onClick={() => setCurrentImageIndex(index)}
+                >
+                  <img 
+                    src={url} 
+                    alt={`운동 기록 사진 ${index + 1}`} 
+                    className="image-modal-image-small" 
+                  />
+                </div>
+              ))}
+            </div>
+            <div className="image-modal-main">
+              <img 
+                src={selectedImageUrls[currentImageIndex]} 
+                alt={`운동 기록 사진 ${currentImageIndex + 1}`} 
+                className="image-modal-image-main" 
+              />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

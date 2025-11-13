@@ -32,6 +32,16 @@ function ChallengeDetail({ challengeId, onBack }) {
     return `${year}-${month}-${day} (${weekday})`;
   };
 
+  const formatDateRange = (startDate, endDate) => {
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    const startMonth = String(start.getMonth() + 1).padStart(2, '0');
+    const startDay = String(start.getDate()).padStart(2, '0');
+    const endMonth = String(end.getMonth() + 1).padStart(2, '0');
+    const endDay = String(end.getDate()).padStart(2, '0');
+    return `${start.getFullYear()}.${startMonth}.${startDay} ~ ${end.getFullYear()}.${endMonth}.${endDay}`;
+  };
+
   if (loading) {
     return <div className="loading">챌린지 상세 정보를 불러오는 중...</div>;
   }
@@ -44,9 +54,12 @@ function ChallengeDetail({ challengeId, onBack }) {
 
   return (
     <div className="challenge-detail-container">
+      <button className="back-button" onClick={onBack}>← 뒤로</button>
       <div className="detail-header">
-        <button className="back-button" onClick={onBack}>← 뒤로</button>
         <h2>{challenge.name}</h2>
+        <div className="challenge-period">
+          {formatDateRange(challenge.startDate, challenge.endDate)}
+        </div>
       </div>
 
       <div className="targets-section">

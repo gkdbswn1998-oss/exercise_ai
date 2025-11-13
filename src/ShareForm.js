@@ -3,9 +3,9 @@ import './ShareForm.css';
 import { searchUsers, createShareRequest } from './shareApi';
 import { getAllChallenges } from './challengeApi';
 
-function ShareForm({ onSuccess, onCancel }) {
+function ShareForm({ challengeId: propChallengeId, onSuccess, onCancel }) {
   const [toUserId, setToUserId] = useState(null);
-  const [challengeId, setChallengeId] = useState('');
+  const [challengeId, setChallengeId] = useState(propChallengeId || '');
   const [challenges, setChallenges] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState([]);
@@ -15,7 +15,10 @@ function ShareForm({ onSuccess, onCancel }) {
 
   useEffect(() => {
     loadChallenges();
-  }, []);
+    if (propChallengeId) {
+      setChallengeId(propChallengeId);
+    }
+  }, [propChallengeId]);
 
   useEffect(() => {
     if (showSearchModal && searchQuery) {
@@ -86,7 +89,6 @@ function ShareForm({ onSuccess, onCancel }) {
     <div className="share-form-container">
       <div className="share-form-header">
         <h2>공유하기 추가</h2>
-        <button className="cancel-button" onClick={onCancel}>취소</button>
       </div>
 
       <form onSubmit={handleSubmit} className="share-form">
@@ -125,6 +127,7 @@ function ShareForm({ onSuccess, onCancel }) {
             value={challengeId} 
             onChange={(e) => setChallengeId(e.target.value)}
             required
+            disabled={!!propChallengeId}
           >
             <option value="">챌린지 선택</option>
             {challenges.map((challenge) => (
@@ -139,6 +142,7 @@ function ShareForm({ onSuccess, onCancel }) {
           <button type="submit" className="submit-button" disabled={submitting}>
             {submitting ? '전송 중...' : '공유 요청 보내기'}
           </button>
+          <button type="button" className="cancel-button" onClick={onCancel}>취소</button>
         </div>
       </form>
 

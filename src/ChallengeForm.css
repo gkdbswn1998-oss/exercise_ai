@@ -51,7 +51,7 @@
 }
 
 .form-group input:focus {
-  border-color: #667eea;
+  border-color: #000;
 }
 
 .form-group input::placeholder {
@@ -77,19 +77,19 @@
 .submit-button {
   flex: 1;
   padding: 14px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: #000;
   color: white;
   border: none;
   border-radius: 8px;
   font-size: 16px;
   font-weight: 600;
   cursor: pointer;
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  transition: all 0.2s ease;
 }
 
 .submit-button:hover:not(:disabled) {
-  transform: translateY(-2px);
-  box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+  background: #333;
+  transform: translateY(-1px);
 }
 
 .submit-button:disabled {
@@ -101,8 +101,8 @@
   flex: 1;
   padding: 14px;
   background: white;
-  color: #667eea;
-  border: 2px solid #667eea;
+  color: #000;
+  border: 2px solid #000;
   border-radius: 8px;
   font-size: 16px;
   font-weight: 600;
@@ -111,7 +111,7 @@
 }
 
 .cancel-button:hover {
-  background: #667eea;
+  background: #000;
   color: white;
 }
 

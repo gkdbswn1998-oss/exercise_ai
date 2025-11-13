@@ -14,6 +14,7 @@ public class ExerciseRecordRequest {
     private Double musclePercentage;  // 근육률
     private String exerciseType;  // 운동종류
     private Integer exerciseDuration;  // 운동시간 (분)
+    private String imageUrl;  // 첨부 사진 URL
 }
 
 

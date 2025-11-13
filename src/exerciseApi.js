@@ -74,7 +74,8 @@ export async function saveExerciseRecord(recordData) {
       bodyFatPercentage: recordData.bodyFatPercentage ? parseFloat(recordData.bodyFatPercentage) : null,
       muscleMass: recordData.muscleMass ? parseFloat(recordData.muscleMass) : null,
       musclePercentage: recordData.musclePercentage ? parseFloat(recordData.musclePercentage) : null,
-      exerciseDuration: recordData.exerciseDuration ? parseInt(recordData.exerciseDuration) : null
+      exerciseDuration: recordData.exerciseDuration ? parseInt(recordData.exerciseDuration) : null,
+      imageUrl: recordData.imageUrl || null
     };
 
     const response = await fetch(`${API_BASE_URL}/exercise-records`, {
@@ -162,6 +163,76 @@ export async function getExerciseRecordsByDateRange(startDate, endDate) {
     return data;
   } catch (error) {
     console.error('기간별 기록 조회 오류:', error);
+    throw error;
+  }
+}
+
+/**
+ * 운동 기록에 사진 업로드 (단일)
+ * @param {File} file - 업로드할 이미지 파일
+ * @returns {Promise<string>} 업로드된 이미지 URL
+ */
+export async function uploadExerciseImage(file) {
+  try {
+    const user = JSON.parse(localStorage.getItem('user') || '{}');
+    const userId = user.id || 1;
+
+    const formData = new FormData();
+    formData.append('file', file);
+
+    const response = await fetch(`${API_BASE_URL}/exercise-records/upload`, {
+      method: 'POST',
+      headers: {
+        'X-User-Id': userId.toString()
+      },
+      body: formData
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(errorText || '파일 업로드에 실패했습니다.');
+    }
+
+    const imageUrl = await response.text();
+    return imageUrl;
+  } catch (error) {
+    console.error('파일 업로드 오류:', error);
+    throw error;
+  }
+}
+
+/**
+ * 운동 기록에 여러 사진 업로드
+ * @param {File[]} files - 업로드할 이미지 파일 배열
+ * @returns {Promise<string[]>} 업로드된 이미지 URL 배열
+ */
+export async function uploadExerciseImages(files) {
+  try {
+    const user = JSON.parse(localStorage.getItem('user') || '{}');
+    const userId = user.id || 1;
+
+    const formData = new FormData();
+    files.forEach(file => {
+      formData.append('files', file);
+    });
+
+    const response = await fetch(`${API_BASE_URL}/exercise-records/upload-multiple`, {
+      method: 'POST',
+      headers: {
+        'X-User-Id': userId.toString()
+      },
+      body: formData
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(errorText || '파일 업로드에 실패했습니다.');
+    }
+
+    const imageUrls = await response.json();
+    return imageUrls;
+  } catch (error) {
+    console.error('파일 업로드 오류:', error);
     throw error;
   }
 }

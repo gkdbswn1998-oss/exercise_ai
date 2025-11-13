@@ -17,7 +17,7 @@
 
 .create-button {
   padding: 10px 20px;
-  background-color: #4CAF50;
+  background-color: #000;
   color: white;
   border: none;
   border-radius: 4px;
@@ -26,7 +26,7 @@
 }
 
 .create-button:hover {
-  background-color: #45a049;
+  background-color: #333;
 }
 
 .tab-container {
@@ -48,13 +48,13 @@
 }
 
 .tab-button.active {
-  color: #4CAF50;
-  border-bottom-color: #4CAF50;
+  color: #000;
+  border-bottom-color: #000;
   font-weight: bold;
 }
 
 .tab-button:hover {
-  color: #4CAF50;
+  color: #000;
 }
 
 .loading, .no-shares {
@@ -112,30 +112,30 @@
 }
 
 .accept-button {
-  background-color: #4CAF50;
+  background-color: #000;
   color: white;
 }
 
 .accept-button:hover {
-  background-color: #45a049;
+  background-color: #333;
 }
 
 .reject-button {
-  background-color: #f44336;
+  background-color: #666;
   color: white;
 }
 
 .reject-button:hover {
-  background-color: #da190b;
+  background-color: #555;
 }
 
 .detail-button {
-  background-color: #2196F3;
+  background-color: #000;
   color: white;
 }
 
 .detail-button:hover {
-  background-color: #0b7dda;
+  background-color: #333;
 }
 
 

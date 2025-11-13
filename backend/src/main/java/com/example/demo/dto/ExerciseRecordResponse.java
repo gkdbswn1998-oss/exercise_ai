@@ -17,6 +17,7 @@ public class ExerciseRecordResponse {
     private Double musclePercentage;
     private String exerciseType;
     private Integer exerciseDuration;
+    private String imageUrl;  // 첨부 사진 URL
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 }

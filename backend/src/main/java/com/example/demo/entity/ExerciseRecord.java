@@ -37,6 +37,9 @@ public class ExerciseRecord {
     
     @Column(name = "exercise_duration")
     private Integer exerciseDuration;  // 운동시간 (분)
+    
+    @Column(name = "image_url", length = 500)
+    private String imageUrl;  // 첨부 사진 URL
 
     @Column(name = "created_at")
     private LocalDateTime createdAt;
