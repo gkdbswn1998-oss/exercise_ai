@@ -213,6 +213,13 @@
   font-weight: 700;
 }
 
+.field-change {
+  margin-left: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #666;
+}
+
 .overall-stats {
   display: flex;
   flex-direction: column;

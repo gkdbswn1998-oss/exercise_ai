@@ -417,57 +417,113 @@ function ChallengeDetail({ challengeId, onBack }) {
             progress.exerciseDuration != null
           );
           
-          // 최신순으로 정렬 (날짜 내림차순)
+          // 날짜순으로 정렬 (오름차순) - 전날 데이터를 찾기 위해
+          const sortedByDate = [...validProgress].sort((a, b) => {
+            const dateA = new Date(a.date);
+            const dateB = new Date(b.date);
+            return dateA - dateB; // 날짜순 (오름차순)
+          });
+          
+          // 최신순으로 정렬 (날짜 내림차순) - 표시용
           const sortedProgress = [...validProgress].sort((a, b) => {
             const dateA = new Date(a.date);
             const dateB = new Date(b.date);
             return dateB - dateA; // 최신순 (내림차순)
           });
           
+          // 전날 데이터를 찾는 함수 (가장 최근의 이전 기록)
+          const getPreviousDayData = (currentDate) => {
+            const current = new Date(currentDate);
+            const currentDateStr = current.toISOString().split('T')[0];
+            
+            // sortedByDate는 날짜순 오름차순이므로, 뒤에서부터 찾으면 가장 최근 이전 기록을 찾을 수 있음
+            for (let i = sortedByDate.length - 1; i >= 0; i--) {
+              const record = sortedByDate[i];
+              const recordDate = new Date(record.date);
+              const recordDateStr = recordDate.toISOString().split('T')[0];
+              
+              // 현재 날짜보다 이전인 기록 중 가장 최근 것
+              if (recordDateStr < currentDateStr) {
+                return record;
+              }
+            }
+            
+            return null;
+          };
+          
+          // 증감 표시 함수
+          const formatChange = (current, previous, unit = '') => {
+            if (current == null || previous == null) return null;
+            const diff = current - previous;
+            if (diff === 0) return null;
+            const absDiff = Math.abs(diff);
+            const sign = diff > 0 ? '↑' : '↓';
+            return `(${absDiff.toFixed(1)}${sign})`;
+          };
+          
           return sortedProgress.length === 0 ? (
             <div className="no-records">기록이 없습니다. 운동 기록을 입력해주세요.</div>
           ) : (
             <div className="progress-list">
-              {sortedProgress.map((progress, index) => (
-                <div key={index} className="progress-item">
-                <div className="progress-date-header">
-                  <div className="progress-date">{formatDate(progress.date)}</div>
-                  <button 
-                    className="edit-progress-button"
-                    onClick={() => handleEditProgress(progress)}
-                  >
-                    수정하기
-                  </button>
-                </div>
-                <div className="progress-content">
-                  <div className={`progress-field ${progress.weightSuccess !== null && progress.weightSuccess !== undefined ? (progress.weightSuccess ? 'success' : 'fail') : ''}`}>
-                    <span className="field-label">
-                      체중: <span className="field-value">{progress.weight ? `${progress.weight} kg` : '-'}</span>
-                    </span>
+              {sortedProgress.map((progress, index) => {
+                const previousDay = getPreviousDayData(progress.date);
+                
+                return (
+                  <div key={index} className="progress-item">
+                    <div className="progress-date-header">
+                      <div className="progress-date">{formatDate(progress.date)}</div>
+                      <button 
+                        className="edit-progress-button"
+                        onClick={() => handleEditProgress(progress)}
+                      >
+                        수정하기
+                      </button>
+                    </div>
+                    <div className="progress-content">
+                      <div className={`progress-field ${progress.weightSuccess !== null && progress.weightSuccess !== undefined ? (progress.weightSuccess ? 'success' : 'fail') : ''}`}>
+                        <span className="field-label">
+                          체중: <span className="field-value">{progress.weight ? `${progress.weight} kg` : '-'}</span>
+                          {progress.weight != null && previousDay?.weight != null && (
+                            <span className="field-change">{formatChange(progress.weight, previousDay.weight)}</span>
+                          )}
+                        </span>
+                      </div>
+                      <div className={`progress-field ${progress.bodyFatSuccess !== null && progress.bodyFatSuccess !== undefined ? (progress.bodyFatSuccess ? 'success' : 'fail') : ''}`}>
+                        <span className="field-label">
+                          체지방률: <span className="field-value">{progress.bodyFatPercentage ? `${progress.bodyFatPercentage}%` : '-'}</span>
+                          {progress.bodyFatPercentage != null && previousDay?.bodyFatPercentage != null && (
+                            <span className="field-change">{formatChange(progress.bodyFatPercentage, previousDay.bodyFatPercentage)}</span>
+                          )}
+                        </span>
+                      </div>
+                      <div className={`progress-field ${progress.muscleMassSuccess !== null && progress.muscleMassSuccess !== undefined ? (progress.muscleMassSuccess ? 'success' : 'fail') : ''}`}>
+                        <span className="field-label">
+                          근육량: <span className="field-value">{progress.muscleMass ? `${progress.muscleMass} kg` : '-'}</span>
+                          {progress.muscleMass != null && previousDay?.muscleMass != null && (
+                            <span className="field-change">{formatChange(progress.muscleMass, previousDay.muscleMass)}</span>
+                          )}
+                        </span>
+                      </div>
+                      <div className={`progress-field ${progress.musclePercentageSuccess !== null && progress.musclePercentageSuccess !== undefined ? (progress.musclePercentageSuccess ? 'success' : 'fail') : ''}`}>
+                        <span className="field-label">
+                          근육률: <span className="field-value">{progress.musclePercentage ? `${progress.musclePercentage}%` : '-'}</span>
+                          {progress.musclePercentage != null && previousDay?.musclePercentage != null && (
+                            <span className="field-change">{formatChange(progress.musclePercentage, previousDay.musclePercentage)}</span>
+                          )}
+                        </span>
+                      </div>
+                      <div className={`progress-field ${progress.exerciseDurationSuccess !== null && progress.exerciseDurationSuccess !== undefined ? (progress.exerciseDurationSuccess ? 'success' : 'fail') : ''}`}>
+                        <span className="field-label">
+                          운동시간: <span className="field-value">{progress.exerciseDuration ? `${progress.exerciseDuration}분` : '-'}</span>
+                          {progress.exerciseDuration != null && previousDay?.exerciseDuration != null && (
+                            <span className="field-change">{formatChange(progress.exerciseDuration, previousDay.exerciseDuration)}</span>
+                          )}
+                        </span>
+                      </div>
+                    </div>
                   </div>
-                  <div className={`progress-field ${progress.bodyFatSuccess !== null && progress.bodyFatSuccess !== undefined ? (progress.bodyFatSuccess ? 'success' : 'fail') : ''}`}>
-                    <span className="field-label">
-                      체지방률: <span className="field-value">{progress.bodyFatPercentage ? `${progress.bodyFatPercentage}%` : '-'}</span>
-                    </span>
-                  </div>
-                  <div className={`progress-field ${progress.muscleMassSuccess !== null && progress.muscleMassSuccess !== undefined ? (progress.muscleMassSuccess ? 'success' : 'fail') : ''}`}>
-                    <span className="field-label">
-                      근육량: <span className="field-value">{progress.muscleMass ? `${progress.muscleMass} kg` : '-'}</span>
-                    </span>
-                  </div>
-                  <div className={`progress-field ${progress.musclePercentageSuccess !== null && progress.musclePercentageSuccess !== undefined ? (progress.musclePercentageSuccess ? 'success' : 'fail') : ''}`}>
-                    <span className="field-label">
-                      근육률: <span className="field-value">{progress.musclePercentage ? `${progress.musclePercentage}%` : '-'}</span>
-                    </span>
-                  </div>
-                  <div className={`progress-field ${progress.exerciseDurationSuccess !== null && progress.exerciseDurationSuccess !== undefined ? (progress.exerciseDurationSuccess ? 'success' : 'fail') : ''}`}>
-                    <span className="field-label">
-                      운동시간: <span className="field-value">{progress.exerciseDuration ? `${progress.exerciseDuration}분` : '-'}</span>
-                    </span>
-                  </div>
-                </div>
-              </div>
-              ))}
+                );
+              })}
             </div>
           );
         })()}
