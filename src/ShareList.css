@@ -1,0 +1,141 @@
+.share-list-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+.share-list-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.share-list-header h2 {
+  margin: 0;
+}
+
+.create-button {
+  padding: 10px 20px;
+  background-color: #4CAF50;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.create-button:hover {
+  background-color: #45a049;
+}
+
+.tab-container {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 20px;
+  border-bottom: 2px solid #e0e0e0;
+}
+
+.tab-button {
+  padding: 10px 20px;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  font-size: 14px;
+  color: #666;
+  margin-bottom: -2px;
+}
+
+.tab-button.active {
+  color: #4CAF50;
+  border-bottom-color: #4CAF50;
+  font-weight: bold;
+}
+
+.tab-button:hover {
+  color: #4CAF50;
+}
+
+.loading, .no-shares {
+  text-align: center;
+  padding: 40px;
+  color: #666;
+}
+
+.shares-list {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.share-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px;
+  background: white;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.share-info {
+  flex: 1;
+}
+
+.share-challenge-name {
+  margin: 0 0 10px 0;
+  font-size: 18px;
+  color: #333;
+}
+
+.share-details {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  font-size: 14px;
+  color: #666;
+}
+
+.share-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.accept-button, .reject-button, .detail-button {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.accept-button {
+  background-color: #4CAF50;
+  color: white;
+}
+
+.accept-button:hover {
+  background-color: #45a049;
+}
+
+.reject-button {
+  background-color: #f44336;
+  color: white;
+}
+
+.reject-button:hover {
+  background-color: #da190b;
+}
+
+.detail-button {
+  background-color: #2196F3;
+  color: white;
+}
+
+.detail-button:hover {
+  background-color: #0b7dda;
+}
+
+

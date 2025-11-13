@@ -1,0 +1,190 @@
+import React, { useState, useEffect } from 'react';
+import './ShareDetail.css';
+import { getSharedChallengeDetail } from './shareApi';
+
+function ShareDetail({ shareId, onBack }) {
+  const [detail, setDetail] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    loadDetail();
+  }, [shareId]);
+
+  const loadDetail = async () => {
+    setLoading(true);
+    try {
+      const data = await getSharedChallengeDetail(shareId);
+      setDetail(data);
+    } catch (error) {
+      console.error('공유된 챌린지 상세 조회 오류:', error);
+      alert('상세 정보를 불러올 수 없습니다.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const formatDate = (dateString) => {
+    const date = new Date(dateString);
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
+  const formatDiff = (diff, isLowerBetter = false) => {
+    if (diff === null || diff === undefined) return '-';
+    const sign = diff >= 0 ? '+' : '';
+    const color = isLowerBetter 
+      ? (diff <= 0 ? 'success' : 'fail')
+      : (diff >= 0 ? 'success' : 'fail');
+    return <span className={`diff-value ${color}`}>{sign}{diff.toFixed(1)}</span>;
+  };
+
+  if (loading) {
+    return <div className="loading">로딩 중...</div>;
+  }
+
+  if (!detail) {
+    return <div className="error">데이터를 불러올 수 없습니다.</div>;
+  }
+
+  const { challenge, dailyProgress, overallProgress } = detail;
+
+  return (
+    <div className="share-detail-container">
+      <div className="share-detail-header">
+        <button className="back-button" onClick={onBack}>← 뒤로</button>
+        <h2>{challenge.name}</h2>
+      </div>
+
+      <div className="target-section">
+        <h3>목표</h3>
+        <div className="target-grid">
+          <div className="target-item">
+            <span className="target-label">체중</span>
+            <span className="target-value">{challenge.targetWeight || '-'} kg</span>
+          </div>
+          <div className="target-item">
+            <span className="target-label">체지방률</span>
+            <span className="target-value">{challenge.targetBodyFatPercentage || '-'} %</span>
+          </div>
+          <div className="target-item">
+            <span className="target-label">근육량</span>
+            <span className="target-value">{challenge.targetMuscleMass || '-'} kg</span>
+          </div>
+          <div className="target-item">
+            <span className="target-label">근육률</span>
+            <span className="target-value">{challenge.targetMusclePercentage || '-'} %</span>
+          </div>
+          <div className="target-item">
+            <span className="target-label">운동시간</span>
+            <span className="target-value">{challenge.targetExerciseDuration || '-'} 분</span>
+          </div>
+        </div>
+      </div>
+
+      <div className="daily-progress-section">
+        <h3>일별 진행상황 (목표 대비 차이)</h3>
+        <div className="daily-progress-list">
+          {dailyProgress.map((progress, index) => (
+            <div key={index} className="daily-progress-item">
+              <div className="progress-date">{formatDate(progress.date)}</div>
+              <div className="progress-fields">
+                <div className="progress-field">
+                  <span className="field-label">체중</span>
+                  <span className="field-value">{formatDiff(progress.weightDiff, true)} kg</span>
+                  <span className={`status-badge ${progress.weightSuccess ? 'success' : 'fail'}`}>
+                    {progress.weightSuccess ? '성공' : '실패'}
+                  </span>
+                </div>
+                <div className="progress-field">
+                  <span className="field-label">체지방률</span>
+                  <span className="field-value">{formatDiff(progress.bodyFatDiff, true)} %</span>
+                  <span className={`status-badge ${progress.bodyFatSuccess ? 'success' : 'fail'}`}>
+                    {progress.bodyFatSuccess ? '성공' : '실패'}
+                  </span>
+                </div>
+                <div className="progress-field">
+                  <span className="field-label">근육량</span>
+                  <span className="field-value">{formatDiff(progress.muscleMassDiff, false)} kg</span>
+                  <span className={`status-badge ${progress.muscleMassSuccess ? 'success' : 'fail'}`}>
+                    {progress.muscleMassSuccess ? '성공' : '실패'}
+                  </span>
+                </div>
+                <div className="progress-field">
+                  <span className="field-label">근육률</span>
+                  <span className="field-value">{formatDiff(progress.musclePercentageDiff, false)} %</span>
+                  <span className={`status-badge ${progress.musclePercentageSuccess ? 'success' : 'fail'}`}>
+                    {progress.musclePercentageSuccess ? '성공' : '실패'}
+                  </span>
+                </div>
+                <div className="progress-field">
+                  <span className="field-label">운동시간</span>
+                  <span className="field-value">{formatDiff(progress.exerciseDurationDiff, false)} 분</span>
+                  <span className={`status-badge ${progress.exerciseDurationSuccess ? 'success' : 'fail'}`}>
+                    {progress.exerciseDurationSuccess ? '성공' : '실패'}
+                  </span>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="overall-progress-section">
+        <h3>전체 성공률</h3>
+        <div className="overall-stats">
+          <div className="stat-item">
+            <span className="stat-label">체중</span>
+            <span className="stat-value">
+              {overallProgress.weightSuccessCount} / {overallProgress.weightRecordedDays || overallProgress.totalDays}
+            </span>
+            <span className="stat-percentage">
+              {overallProgress.weightSuccessRate.toFixed(1)}%
+            </span>
+          </div>
+          <div className="stat-item">
+            <span className="stat-label">체지방률</span>
+            <span className="stat-value">
+              {overallProgress.bodyFatSuccessCount} / {overallProgress.bodyFatRecordedDays || overallProgress.totalDays}
+            </span>
+            <span className="stat-percentage">
+              {overallProgress.bodyFatSuccessRate.toFixed(1)}%
+            </span>
+          </div>
+          <div className="stat-item">
+            <span className="stat-label">근육량</span>
+            <span className="stat-value">
+              {overallProgress.muscleMassSuccessCount} / {overallProgress.muscleMassRecordedDays || overallProgress.totalDays}
+            </span>
+            <span className="stat-percentage">
+              {overallProgress.muscleMassSuccessRate.toFixed(1)}%
+            </span>
+          </div>
+          <div className="stat-item">
+            <span className="stat-label">근육률</span>
+            <span className="stat-value">
+              {overallProgress.musclePercentageSuccessCount} / {overallProgress.musclePercentageRecordedDays || overallProgress.totalDays}
+            </span>
+            <span className="stat-percentage">
+              {overallProgress.musclePercentageSuccessRate.toFixed(1)}%
+            </span>
+          </div>
+          <div className="stat-item">
+            <span className="stat-label">운동시간</span>
+            <span className="stat-value">
+              {overallProgress.exerciseDurationSuccessCount} / {overallProgress.exerciseDurationRecordedDays || overallProgress.totalDays}
+            </span>
+            <span className="stat-percentage">
+              {overallProgress.exerciseDurationSuccessRate.toFixed(1)}%
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export default ShareDetail;
+
+
