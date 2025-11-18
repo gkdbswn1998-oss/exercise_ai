@@ -57,80 +57,6 @@ function ShareDetail({ shareId, onBack }) {
         <h2>{challenge.name}</h2>
       </div>
 
-      <div className="target-section">
-        <h3>목표</h3>
-        <div className="target-grid">
-          <div className="target-item">
-            <span className="target-label">체중</span>
-            <span className="target-value">{challenge.targetWeight || '-'} kg</span>
-          </div>
-          <div className="target-item">
-            <span className="target-label">체지방률</span>
-            <span className="target-value">{challenge.targetBodyFatPercentage || '-'} %</span>
-          </div>
-          <div className="target-item">
-            <span className="target-label">근육량</span>
-            <span className="target-value">{challenge.targetMuscleMass || '-'} kg</span>
-          </div>
-          <div className="target-item">
-            <span className="target-label">근육률</span>
-            <span className="target-value">{challenge.targetMusclePercentage || '-'} %</span>
-          </div>
-          <div className="target-item">
-            <span className="target-label">운동시간</span>
-            <span className="target-value">{challenge.targetExerciseDuration || '-'} 분</span>
-          </div>
-        </div>
-      </div>
-
-      <div className="daily-progress-section">
-        <h3>일별 진행상황 (목표 대비 차이)</h3>
-        <div className="daily-progress-list">
-          {dailyProgress.map((progress, index) => (
-            <div key={index} className="daily-progress-item">
-              <div className="progress-date">{formatDate(progress.date)}</div>
-              <div className="progress-fields">
-                <div className="progress-field">
-                  <span className="field-label">체중</span>
-                  <span className="field-value">{formatDiff(progress.weightDiff, true)} kg</span>
-                  <span className={`status-badge ${progress.weightSuccess ? 'success' : 'fail'}`}>
-                    {progress.weightSuccess ? '성공' : '실패'}
-                  </span>
-                </div>
-                <div className="progress-field">
-                  <span className="field-label">체지방률</span>
-                  <span className="field-value">{formatDiff(progress.bodyFatDiff, true)} %</span>
-                  <span className={`status-badge ${progress.bodyFatSuccess ? 'success' : 'fail'}`}>
-                    {progress.bodyFatSuccess ? '성공' : '실패'}
-                  </span>
-                </div>
-                <div className="progress-field">
-                  <span className="field-label">근육량</span>
-                  <span className="field-value">{formatDiff(progress.muscleMassDiff, false)} kg</span>
-                  <span className={`status-badge ${progress.muscleMassSuccess ? 'success' : 'fail'}`}>
-                    {progress.muscleMassSuccess ? '성공' : '실패'}
-                  </span>
-                </div>
-                <div className="progress-field">
-                  <span className="field-label">근육률</span>
-                  <span className="field-value">{formatDiff(progress.musclePercentageDiff, false)} %</span>
-                  <span className={`status-badge ${progress.musclePercentageSuccess ? 'success' : 'fail'}`}>
-                    {progress.musclePercentageSuccess ? '성공' : '실패'}
-                  </span>
-                </div>
-                <div className="progress-field">
-                  <span className="field-label">운동시간</span>
-                  <span className="field-value">{formatDiff(progress.exerciseDurationDiff, false)} 분</span>
-                  <span className={`status-badge ${progress.exerciseDurationSuccess ? 'success' : 'fail'}`}>
-                    {progress.exerciseDurationSuccess ? '성공' : '실패'}
-                  </span>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
       <div className="overall-progress-section">
         <h3>전체 성공률</h3>
         <div className="overall-stats">
@@ -180,6 +106,77 @@ function ShareDetail({ shareId, onBack }) {
             </span>
           </div>
         </div>
+      </div>
+
+      <div className="daily-progress-section">
+        <h3>일별 진행상황 (목표 대비 차이)</h3>
+        {(() => {
+          // 기록이 실제로 있는 항목만 필터링 (최소 하나의 필드에 데이터가 있어야 함)
+          const validProgress = (dailyProgress || []).filter(progress => {
+            // diff 값이 null이 아니거나, 원본 데이터 필드가 있는 경우만 표시
+            const hasData = 
+              (progress.weightDiff != null && progress.weightDiff !== undefined) ||
+              (progress.bodyFatDiff != null && progress.bodyFatDiff !== undefined) ||
+              (progress.muscleMassDiff != null && progress.muscleMassDiff !== undefined) ||
+              (progress.musclePercentageDiff != null && progress.musclePercentageDiff !== undefined) ||
+              (progress.exerciseDurationDiff != null && progress.exerciseDurationDiff !== undefined) ||
+              (progress.weight != null && progress.weight !== '') ||
+              (progress.bodyFatPercentage != null && progress.bodyFatPercentage !== '') ||
+              (progress.muscleMass != null && progress.muscleMass !== '') ||
+              (progress.musclePercentage != null && progress.musclePercentage !== '') ||
+              (progress.exerciseDuration != null && progress.exerciseDuration !== '');
+            return hasData;
+          });
+
+          return validProgress.length === 0 ? (
+            <div className="no-records">기록이 없습니다. 운동 기록을 입력해주세요.</div>
+          ) : (
+            <div className="daily-progress-list">
+              {validProgress.map((progress, index) => (
+                <div key={index} className="daily-progress-item">
+                  <div className="progress-date">{formatDate(progress.date)}</div>
+                  <div className="progress-fields">
+                    <div className="progress-field">
+                      <span className="field-label">체중</span>
+                      <span className="field-value">{formatDiff(progress.weightDiff, true)} kg</span>
+                      <span className={`status-badge ${progress.weightSuccess ? 'success' : 'fail'}`}>
+                        {progress.weightSuccess ? '성공' : '실패'}
+                      </span>
+                    </div>
+                    <div className="progress-field">
+                      <span className="field-label">체지방률</span>
+                      <span className="field-value">{formatDiff(progress.bodyFatDiff, true)} %</span>
+                      <span className={`status-badge ${progress.bodyFatSuccess ? 'success' : 'fail'}`}>
+                        {progress.bodyFatSuccess ? '성공' : '실패'}
+                      </span>
+                    </div>
+                    <div className="progress-field">
+                      <span className="field-label">근육량</span>
+                      <span className="field-value">{formatDiff(progress.muscleMassDiff, false)} kg</span>
+                      <span className={`status-badge ${progress.muscleMassSuccess ? 'success' : 'fail'}`}>
+                        {progress.muscleMassSuccess ? '성공' : '실패'}
+                      </span>
+                    </div>
+                    <div className="progress-field">
+                      <span className="field-label">근육률</span>
+                      <span className="field-value">{formatDiff(progress.musclePercentageDiff, false)} %</span>
+                      <span className={`status-badge ${progress.musclePercentageSuccess ? 'success' : 'fail'}`}>
+                        {progress.musclePercentageSuccess ? '성공' : '실패'}
+                      </span>
+                    </div>
+                    <div className="progress-field">
+                      <span className="field-label">운동시간</span>
+                      <span className="field-value">{formatDiff(progress.exerciseDurationDiff, false)} 분</span>
+                      <span className={`status-badge ${progress.exerciseDurationSuccess ? 'success' : 'fail'}`}>
+                        {progress.exerciseDurationSuccess ? '성공' : '실패'}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          );
+        })()}
       </div>
     </div>
   );

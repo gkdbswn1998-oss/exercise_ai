@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import './ChallengeList.css';
 import { getAllChallenges } from './challengeApi';
 import ShareForm from './ShareForm';
-import { getSharedUsersByChallenge } from './shareApi';
 
 function ChallengeList({ onViewDetail, onCreateChallenge, onRefresh }) {
   const [challenges, setChallenges] = useState([]);
@@ -10,8 +9,6 @@ function ChallengeList({ onViewDetail, onCreateChallenge, onRefresh }) {
   const [activeTab, setActiveTab] = useState('active'); // 'active' or 'completed'
   const [showShareForm, setShowShareForm] = useState(false);
   const [selectedChallengeId, setSelectedChallengeId] = useState(null);
-  const [sharedUsers, setSharedUsers] = useState({}); // { challengeId: [users] }
-  const [hoveredChallengeId, setHoveredChallengeId] = useState(null);
 
   useEffect(() => {
     loadChallenges();
@@ -23,27 +20,6 @@ function ChallengeList({ onViewDetail, onCreateChallenge, onRefresh }) {
       loadChallenges();
     }
   }, [onRefresh]);
-
-  // 각 챌린지의 공유된 사용자 로드
-  useEffect(() => {
-    const loadSharedUsers = async () => {
-      const usersMap = {};
-      for (const challenge of challenges) {
-        try {
-          const users = await getSharedUsersByChallenge(challenge.id);
-          usersMap[challenge.id] = users;
-        } catch (error) {
-          console.error(`챌린지 ${challenge.id}의 공유 사용자 조회 오류:`, error);
-          usersMap[challenge.id] = [];
-        }
-      }
-      setSharedUsers(usersMap);
-    };
-
-    if (challenges.length > 0) {
-      loadSharedUsers();
-    }
-  }, [challenges]);
 
   const loadChallenges = async () => {
     setLoading(true);
@@ -123,8 +99,6 @@ function ChallengeList({ onViewDetail, onCreateChallenge, onRefresh }) {
             <div 
               key={challenge.id} 
               className="challenge-item"
-              onMouseEnter={() => setHoveredChallengeId(challenge.id)}
-              onMouseLeave={() => setHoveredChallengeId(null)}
             >
               <div className="challenge-info">
                 <h3 className="challenge-name">{challenge.name}</h3>
@@ -146,20 +120,6 @@ function ChallengeList({ onViewDetail, onCreateChallenge, onRefresh }) {
                   공유하기
                 </button>
               </div>
-              {sharedUsers[challenge.id] && sharedUsers[challenge.id].length > 0 && (
-                <div className="shared-users-container">
-                  <div className="shared-users-icon">👤</div>
-                  {hoveredChallengeId === challenge.id && (
-                    <div className="shared-users-tooltip">
-                      {sharedUsers[challenge.id].map((user, index) => (
-                        <div key={user.id}>
-                          {user.name} (ID: {user.id})
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )}
             </div>
           ))}
         </div>

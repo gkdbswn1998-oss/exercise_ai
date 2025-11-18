@@ -408,14 +408,17 @@ function ChallengeDetail({ challengeId, onBack }) {
       <div className="daily-progress-section">
         <h3>일별 진행상황</h3>
         {(() => {
-          // 기록이 실제로 있는 항목만 필터링 (모든 필드가 null이 아닌 경우)
-          const validProgress = dailyProgress.filter(progress => 
-            progress.weight != null || 
-            progress.bodyFatPercentage != null || 
-            progress.muscleMass != null || 
-            progress.musclePercentage != null || 
-            progress.exerciseDuration != null
-          );
+          // 기록이 실제로 있는 항목만 필터링 (최소 하나의 필드에 데이터가 있어야 함)
+          const validProgress = (dailyProgress || []).filter(progress => {
+            // 모든 필드가 null이거나 undefined인 경우 제외
+            const hasData = 
+              (progress.weight != null && progress.weight !== '') ||
+              (progress.bodyFatPercentage != null && progress.bodyFatPercentage !== '') ||
+              (progress.muscleMass != null && progress.muscleMass !== '') ||
+              (progress.musclePercentage != null && progress.musclePercentage !== '') ||
+              (progress.exerciseDuration != null && progress.exerciseDuration !== '');
+            return hasData;
+          });
           
           // 날짜순으로 정렬 (오름차순) - 전날 데이터를 찾기 위해
           const sortedByDate = [...validProgress].sort((a, b) => {
