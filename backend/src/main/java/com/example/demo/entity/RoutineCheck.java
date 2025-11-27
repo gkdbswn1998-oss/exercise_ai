@@ -9,8 +9,8 @@ import java.time.LocalDateTime;
 @Entity
 @Getter
 @Setter
-@Table(name = "exercise_records")
-public class ExerciseRecord {
+@Table(name = "routine_checks")
+public class RoutineCheck {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -19,24 +19,14 @@ public class ExerciseRecord {
     @Column(name = "user_id", nullable = false)
     private Long userId;
 
-    @Column(name = "record_date", nullable = false)
-    private LocalDate recordDate;  // 기록 날짜
+    @Column(name = "check_date", nullable = false)
+    private LocalDate checkDate;  // 체크 날짜
 
-    private Double weight;  // 체중 (kg)
-    
-    @Column(name = "body_fat_percentage")
-    private Double bodyFatPercentage;  // 체지방률 (%)
-    
-    private Double muscleMass;  // 근육량 (kg)
-    
-    @Column(name = "exercise_type")
-    private String exerciseType;  // 운동종류 (러닝, 헬스, 테니스 등)
-    
-    @Column(name = "exercise_duration")
-    private Integer exerciseDuration;  // 운동시간 (분)
-    
-    @Column(name = "image_url", length = 500)
-    private String imageUrl;  // 첨부 사진 URL
+    @Column(name = "routine_type", nullable = false)
+    private String routineType;  // "MORNING" or "EVENING"
+
+    @Column(name = "checked_items", length = 1000)
+    private String checkedItems;  // JSON 문자열: 체크된 항목들
 
     @Column(name = "created_at")
     private LocalDateTime createdAt;
@@ -55,6 +45,4 @@ public class ExerciseRecord {
         updatedAt = LocalDateTime.now();
     }
 }
-
-
 

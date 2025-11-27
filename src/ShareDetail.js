@@ -88,21 +88,21 @@ function ShareDetail({ shareId, onBack }) {
             </span>
           </div>
           <div className="stat-item">
-            <span className="stat-label">근육률</span>
-            <span className="stat-value">
-              {overallProgress.musclePercentageSuccessCount} / {overallProgress.musclePercentageRecordedDays || overallProgress.totalDays}
-            </span>
-            <span className="stat-percentage">
-              {overallProgress.musclePercentageSuccessRate.toFixed(1)}%
-            </span>
-          </div>
-          <div className="stat-item">
             <span className="stat-label">운동시간</span>
             <span className="stat-value">
               {overallProgress.exerciseDurationSuccessCount} / {overallProgress.exerciseDurationRecordedDays || overallProgress.totalDays}
             </span>
             <span className="stat-percentage">
               {overallProgress.exerciseDurationSuccessRate.toFixed(1)}%
+            </span>
+          </div>
+          <div className="stat-item">
+            <span className="stat-label">아침루틴 | 운동루틴</span>
+            <span className="stat-value">
+              {overallProgress.morningRoutineSuccessDays || 0} / {overallProgress.morningRoutineRecordedDays || 0} | {overallProgress.eveningRoutineSuccessDays || 0} / {overallProgress.eveningRoutineRecordedDays || 0}
+            </span>
+            <span className="stat-percentage">
+              {overallProgress.morningRoutineSuccessRate ? overallProgress.morningRoutineSuccessRate.toFixed(1) : '0.0'}% | {overallProgress.eveningRoutineSuccessRate ? overallProgress.eveningRoutineSuccessRate.toFixed(1) : '0.0'}%
             </span>
           </div>
         </div>
@@ -118,13 +118,13 @@ function ShareDetail({ shareId, onBack }) {
               (progress.weightDiff != null && progress.weightDiff !== undefined) ||
               (progress.bodyFatDiff != null && progress.bodyFatDiff !== undefined) ||
               (progress.muscleMassDiff != null && progress.muscleMassDiff !== undefined) ||
-              (progress.musclePercentageDiff != null && progress.musclePercentageDiff !== undefined) ||
               (progress.exerciseDurationDiff != null && progress.exerciseDurationDiff !== undefined) ||
               (progress.weight != null && progress.weight !== '') ||
               (progress.bodyFatPercentage != null && progress.bodyFatPercentage !== '') ||
               (progress.muscleMass != null && progress.muscleMass !== '') ||
-              (progress.musclePercentage != null && progress.musclePercentage !== '') ||
-              (progress.exerciseDuration != null && progress.exerciseDuration !== '');
+              (progress.exerciseDuration != null && progress.exerciseDuration !== '') ||
+              (progress.morningRoutineTotal != null && progress.morningRoutineTotal > 0) ||
+              (progress.eveningRoutineTotal != null && progress.eveningRoutineTotal > 0);
             return hasData;
           });
 
@@ -158,19 +158,37 @@ function ShareDetail({ shareId, onBack }) {
                       </span>
                     </div>
                     <div className="progress-field">
-                      <span className="field-label">근육률</span>
-                      <span className="field-value">{formatDiff(progress.musclePercentageDiff, false)} %</span>
-                      <span className={`status-badge ${progress.musclePercentageSuccess ? 'success' : 'fail'}`}>
-                        {progress.musclePercentageSuccess ? '성공' : '실패'}
-                      </span>
-                    </div>
-                    <div className="progress-field">
                       <span className="field-label">운동시간</span>
                       <span className="field-value">{formatDiff(progress.exerciseDurationDiff, false)} 분</span>
                       <span className={`status-badge ${progress.exerciseDurationSuccess ? 'success' : 'fail'}`}>
                         {progress.exerciseDurationSuccess ? '성공' : '실패'}
                       </span>
                     </div>
+                    {((progress.morningRoutineTotal != null && progress.morningRoutineTotal > 0) || 
+                      (progress.eveningRoutineTotal != null && progress.eveningRoutineTotal > 0)) && (
+                      <div className="progress-field">
+                        <span className="field-label">아침루틴 | 운동루틴</span>
+                        <span className="field-value">
+                          {(() => {
+                            const morningTotal = progress.morningRoutineTotal != null ? progress.morningRoutineTotal : 0;
+                            const morningChecked = progress.morningRoutineChecked != null ? progress.morningRoutineChecked : 0;
+                            const morningFailed = morningTotal - morningChecked;
+                            const eveningTotal = progress.eveningRoutineTotal != null ? progress.eveningRoutineTotal : 0;
+                            const eveningChecked = progress.eveningRoutineChecked != null ? progress.eveningRoutineChecked : 0;
+                            const eveningFailed = eveningTotal - eveningChecked;
+                            
+                            const morningText = morningTotal > 0 
+                              ? `${morningChecked}/${morningTotal} ${morningFailed > 0 ? `실패(${morningFailed})` : '성공'}`
+                              : '-';
+                            const eveningText = eveningTotal > 0 
+                              ? `${eveningChecked}/${eveningTotal} ${eveningFailed > 0 ? `실패(${eveningFailed})` : '성공'}`
+                              : '-';
+                            
+                            return `${morningText} | ${eveningText}`;
+                          })()}
+                        </span>
+                      </div>
+                    )}
                   </div>
                 </div>
               ))}

@@ -52,7 +52,6 @@ public class ChallengeController {
             challenge.setTargetWeight(request.getTargetWeight());
             challenge.setTargetBodyFatPercentage(request.getTargetBodyFatPercentage());
             challenge.setTargetMuscleMass(request.getTargetMuscleMass());
-            challenge.setTargetMusclePercentage(request.getTargetMusclePercentage());
             challenge.setTargetExerciseDuration(request.getTargetExerciseDuration());
             
             Challenge savedChallenge = challengeRepository.save(challenge);
@@ -89,7 +88,7 @@ public class ChallengeController {
     // 챌린지 목표 수정
     @PutMapping("/{id}/targets")
     public ResponseEntity<ChallengeResponse> updateChallengeTargets(
-            @PathVariable Long id,
+            @PathVariable("id") Long id,
             @RequestBody ChallengeRequest request,
             @RequestHeader(value = "X-User-Id", required = false) Long userId) {
         
@@ -100,7 +99,7 @@ public class ChallengeController {
         logger.info("✏️ 챌린지 목표 수정 - challengeId: {}, userId: {}", id, userId);
         
         try {
-            Challenge challenge = challengeRepository.findById(id)
+            Challenge challenge = challengeRepository.findById(id != null ? id : 0L)
                     .orElse(null);
             
             if (challenge == null || !challenge.getUserId().equals(userId)) {
@@ -112,7 +111,6 @@ public class ChallengeController {
             challenge.setTargetWeight(request.getTargetWeight());
             challenge.setTargetBodyFatPercentage(request.getTargetBodyFatPercentage());
             challenge.setTargetMuscleMass(request.getTargetMuscleMass());
-            challenge.setTargetMusclePercentage(request.getTargetMusclePercentage());
             challenge.setTargetExerciseDuration(request.getTargetExerciseDuration());
             
             Challenge updatedChallenge = challengeRepository.save(challenge);
@@ -130,7 +128,7 @@ public class ChallengeController {
     // 챌린지 상세 조회
     @GetMapping("/{id}")
     public ResponseEntity<ChallengeDetailResponse> getChallengeDetail(
-            @PathVariable Long id,
+            @PathVariable("id") Long id,
             @RequestHeader(value = "X-User-Id", required = false) Long userId) {
         
         if (userId == null) {
@@ -139,7 +137,7 @@ public class ChallengeController {
         
         logger.info("📅 챌린지 상세 조회 - challengeId: {}, userId: {}", id, userId);
         
-        Challenge challenge = challengeRepository.findById(id)
+        Challenge challenge = challengeRepository.findById(id != null ? id : 0L)
                 .orElse(null);
         
         if (challenge == null || !challenge.getUserId().equals(userId)) {
@@ -181,7 +179,6 @@ public class ChallengeController {
             if (record.getWeight() == null && 
                 record.getBodyFatPercentage() == null && 
                 record.getMuscleMass() == null && 
-                record.getMusclePercentage() == null && 
                 record.getExerciseDuration() == null) {
                 continue;
             }
@@ -192,7 +189,6 @@ public class ChallengeController {
             progress.setWeight(record.getWeight());
             progress.setBodyFatPercentage(record.getBodyFatPercentage());
             progress.setMuscleMass(record.getMuscleMass());
-            progress.setMusclePercentage(record.getMusclePercentage());
             progress.setExerciseDuration(record.getExerciseDuration());
             
             // 성공 여부 판단
@@ -202,8 +198,6 @@ public class ChallengeController {
             progress.setBodyFatSuccess(checkSuccess(progress.getBodyFatPercentage(), challenge.getTargetBodyFatPercentage(), false));
             // 근육량: 증가 목표 (높아야 성공) - higherIsBetter = true
             progress.setMuscleMassSuccess(checkSuccess(progress.getMuscleMass(), challenge.getTargetMuscleMass(), true));
-            // 근육률: 증가 목표 (높아야 성공) - higherIsBetter = true
-            progress.setMusclePercentageSuccess(checkSuccess(progress.getMusclePercentage(), challenge.getTargetMusclePercentage(), true));
             // 운동시간: 목표보다 많이 (높아야 성공) - higherIsBetter = true
             progress.setExerciseDurationSuccess(checkSuccess(progress.getExerciseDuration() != null ? progress.getExerciseDuration().doubleValue() : null, 
                     challenge.getTargetExerciseDuration() != null ? challenge.getTargetExerciseDuration().doubleValue() : null, true));
@@ -269,24 +263,13 @@ public class ChallengeController {
                 overall.setMuscleMassSuccessCount(0);
             }
             
-            // 근육률: 증가 목표 (목표보다 높거나 같아야 함) - 달성률 = (실제 / 목표) * 100
-            if (lastRecord.getMusclePercentage() != null && challenge.getTargetMusclePercentage() != null) {
-                double musclePercentageRate = (lastRecord.getMusclePercentage() / challenge.getTargetMusclePercentage()) * 100;
-                overall.setMusclePercentageSuccessRate(musclePercentageRate);
-                overall.setMusclePercentageSuccessCount(lastRecord.getMusclePercentage() >= challenge.getTargetMusclePercentage() ? 1 : 0);
-            } else {
-                overall.setMusclePercentageSuccessRate(0);
-                overall.setMusclePercentageSuccessCount(0);
-            }
         } else {
             overall.setWeightSuccessRate(0);
             overall.setBodyFatSuccessRate(0);
             overall.setMuscleMassSuccessRate(0);
-            overall.setMusclePercentageSuccessRate(0);
             overall.setWeightSuccessCount(0);
             overall.setBodyFatSuccessCount(0);
             overall.setMuscleMassSuccessCount(0);
-            overall.setMusclePercentageSuccessCount(0);
         }
         
         // 운동시간: 전체 기간 합산과 목표 비교 - 달성률 = (실제 합계 / 목표) * 100
@@ -303,7 +286,6 @@ public class ChallengeController {
         overall.setWeightRecordedDays(lastRecord != null && lastRecord.getWeight() != null ? 1 : 0);
         overall.setBodyFatRecordedDays(lastRecord != null && lastRecord.getBodyFatPercentage() != null ? 1 : 0);
         overall.setMuscleMassRecordedDays(lastRecord != null && lastRecord.getMuscleMass() != null ? 1 : 0);
-        overall.setMusclePercentageRecordedDays(lastRecord != null && lastRecord.getMusclePercentage() != null ? 1 : 0);
         overall.setExerciseDurationRecordedDays(totalExerciseDuration > 0 ? 1 : 0);
         
         response.setOverallProgress(overall);
@@ -333,7 +315,6 @@ public class ChallengeController {
         response.setTargetWeight(challenge.getTargetWeight());
         response.setTargetBodyFatPercentage(challenge.getTargetBodyFatPercentage());
         response.setTargetMuscleMass(challenge.getTargetMuscleMass());
-        response.setTargetMusclePercentage(challenge.getTargetMusclePercentage());
         response.setTargetExerciseDuration(challenge.getTargetExerciseDuration());
         response.setCreatedAt(challenge.getCreatedAt());
         response.setUpdatedAt(challenge.getUpdatedAt());

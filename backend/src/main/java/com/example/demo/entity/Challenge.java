@@ -37,9 +37,6 @@ public class Challenge {
     @Column(name = "target_muscle_mass")
     private Double targetMuscleMass;  // 목표 근육량
 
-    @Column(name = "target_muscle_percentage")
-    private Double targetMusclePercentage;  // 목표 근육률
-
     @Column(name = "target_exercise_duration")
     private Integer targetExerciseDuration;  // 목표 운동 시간 (분)
 

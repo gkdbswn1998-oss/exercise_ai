@@ -14,7 +14,6 @@ public class ExerciseRecordResponse {
     private Double weight;
     private Double bodyFatPercentage;
     private Double muscleMass;
-    private Double musclePercentage;
     private String exerciseType;
     private Integer exerciseDuration;
     private String imageUrl;  // 첨부 사진 URL

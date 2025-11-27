@@ -73,7 +73,6 @@ export async function saveExerciseRecord(recordData) {
       weight: recordData.weight ? parseFloat(recordData.weight) : null,
       bodyFatPercentage: recordData.bodyFatPercentage ? parseFloat(recordData.bodyFatPercentage) : null,
       muscleMass: recordData.muscleMass ? parseFloat(recordData.muscleMass) : null,
-      musclePercentage: recordData.musclePercentage ? parseFloat(recordData.musclePercentage) : null,
       exerciseDuration: recordData.exerciseDuration ? parseInt(recordData.exerciseDuration) : null
     };
 

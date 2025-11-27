@@ -16,7 +16,6 @@ function ExerciseRecordList() {
     weight: '',
     bodyFatPercentage: '',
     muscleMass: '',
-    musclePercentage: '',
     exerciseType: '',
     exerciseDuration: ''
   });
@@ -26,7 +25,7 @@ function ExerciseRecordList() {
 
   const recordsPerPage = 10;
   
-  const tabOptions = ['항목별 조회', '체중', '체지방률', '근육량', '근육률', '운동종류', '운동시간'];
+  const tabOptions = ['항목별 조회', '체중', '체지방률', '근육량', '운동종류', '운동시간'];
 
   // 오늘 날짜를 기본값으로 설정
   useEffect(() => {
@@ -55,7 +54,6 @@ function ExerciseRecordList() {
             case '체중': return record.weight && record.weight !== '';
             case '체지방률': return record.bodyFatPercentage && record.bodyFatPercentage !== '';
             case '근육량': return record.muscleMass && record.muscleMass !== '';
-            case '근육률': return record.musclePercentage && record.musclePercentage !== '';
             case '운동종류': return record.exerciseType && record.exerciseType !== '';
             case '운동시간': return record.exerciseDuration && record.exerciseDuration !== '';
             default: return true;
@@ -130,8 +128,6 @@ function ExerciseRecordList() {
           return record.bodyFatPercentage && record.bodyFatPercentage !== '';
         case '근육량':
           return record.muscleMass && record.muscleMass !== '';
-        case '근육률':
-          return record.musclePercentage && record.musclePercentage !== '';
         case '운동종류':
           return record.exerciseType && record.exerciseType !== '';
         case '운동시간':
@@ -172,8 +168,6 @@ function ExerciseRecordList() {
             return record.bodyFatPercentage && record.bodyFatPercentage !== '';
           case '근육량':
             return record.muscleMass && record.muscleMass !== '';
-          case '근육률':
-            return record.musclePercentage && record.musclePercentage !== '';
           case '운동시간':
             return record.exerciseDuration && record.exerciseDuration !== '';
           default:
@@ -208,10 +202,6 @@ function ExerciseRecordList() {
           value = record.muscleMass ? parseFloat(record.muscleMass) : null;
           label = '근육량 (kg)';
           break;
-        case '근육률':
-          value = record.musclePercentage ? parseFloat(record.musclePercentage) : null;
-          label = '근육률 (%)';
-          break;
         case '운동시간':
           value = record.exerciseDuration ? parseInt(record.exerciseDuration) : null;
           label = '운동시간 (분)';
@@ -244,8 +234,6 @@ function ExerciseRecordList() {
         return '체지방률 (%)';
       case '근육량':
         return '근육량 (kg)';
-      case '근육률':
-        return '근육률 (%)';
       case '운동시간':
         return '운동시간 (분)';
       default:
@@ -297,7 +285,6 @@ function ExerciseRecordList() {
       weight: record.weight || '',
       bodyFatPercentage: record.bodyFatPercentage || '',
       muscleMass: record.muscleMass || '',
-      musclePercentage: record.musclePercentage || '',
       exerciseType: record.exerciseType || '',
       exerciseDuration: record.exerciseDuration || ''
     });
@@ -310,7 +297,6 @@ function ExerciseRecordList() {
       weight: '',
       bodyFatPercentage: '',
       muscleMass: '',
-      musclePercentage: '',
       exerciseType: '',
       exerciseDuration: ''
     });
@@ -443,7 +429,7 @@ function ExerciseRecordList() {
                       }}
                       formatter={(value) => {
                         const unit = selectedTab === '체중' || selectedTab === '근육량' ? 'kg' : 
-                                     selectedTab === '체지방률' || selectedTab === '근육률' ? '%' : '분';
+                                     selectedTab === '체지방률' ? '%' : '분';
                         return [`${value}${unit}`, selectedTab];
                       }}
                       labelFormatter={(label) => `날짜: ${label}`}
@@ -506,10 +492,6 @@ function ExerciseRecordList() {
                       <div className="record-field">
                         <span className="field-label">근육량:</span>
                         <span className="field-value">{record.muscleMass ? `${record.muscleMass} kg` : '-'}</span>
-                      </div>
-                      <div className="record-field">
-                        <span className="field-label">근육률:</span>
-                        <span className="field-value">{record.musclePercentage ? `${record.musclePercentage}%` : '-'}</span>
                       </div>
                     </div>
                     <div className="record-row">
@@ -596,17 +578,6 @@ function ExerciseRecordList() {
                     value={editFormData.muscleMass}
                     onChange={handleEditFormChange}
                     placeholder="예: 55.0"
-                    step="0.1"
-                  />
-                </div>
-                <div className="edit-form-group">
-                  <label>근육률 (%)</label>
-                  <input
-                    type="number"
-                    name="musclePercentage"
-                    value={editFormData.musclePercentage}
-                    onChange={handleEditFormChange}
-                    placeholder="예: 45.0"
                     step="0.1"
                   />
                 </div>

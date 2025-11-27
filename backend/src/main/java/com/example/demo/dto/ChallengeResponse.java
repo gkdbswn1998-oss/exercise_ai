@@ -17,7 +17,6 @@ public class ChallengeResponse {
     private Double targetWeight;
     private Double targetBodyFatPercentage;
     private Double targetMuscleMass;
-    private Double targetMusclePercentage;
     private Integer targetExerciseDuration;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;

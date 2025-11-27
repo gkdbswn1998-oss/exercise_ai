@@ -11,7 +11,6 @@ function ChallengeDetail({ challengeId, onBack }) {
     targetWeight: '',
     targetBodyFatPercentage: '',
     targetMuscleMass: '',
-    targetMusclePercentage: '',
     targetExerciseDuration: ''
   });
   const [saving, setSaving] = useState(false);
@@ -20,7 +19,6 @@ function ChallengeDetail({ challengeId, onBack }) {
     weight: '',
     bodyFatPercentage: '',
     muscleMass: '',
-    musclePercentage: '',
     exerciseType: '',
     exerciseDuration: ''
   });
@@ -96,7 +94,7 @@ function ChallengeDetail({ challengeId, onBack }) {
     if (start == null || current == null || target == null) return 0;
     
     if (higherIsBetter) {
-      // 근육량, 근육률, 운동시간: 높을수록 좋음
+      // 근육량, 운동시간: 높을수록 좋음
       // 시작값이 목표값보다 크거나 같으면 계산 불가
       if (start >= target) {
         // 시작값이 목표값 이상이면, 현재값이 목표값 이상이면 100%, 아니면 0%
@@ -180,20 +178,6 @@ function ChallengeDetail({ challengeId, onBack }) {
       });
     }
     
-    // 근육률
-    if (challenge.targetMusclePercentage && startRecord?.musclePercentage != null && lastRecord?.musclePercentage != null) {
-      const rate = calculateProgressRate(startRecord.musclePercentage, lastRecord.musclePercentage, challenge.targetMusclePercentage, true);
-      data.push({
-        label: '근육률',
-        unit: '%',
-        start: startRecord.musclePercentage,
-        current: lastRecord.musclePercentage,
-        target: challenge.targetMusclePercentage,
-        rate: Math.min(Math.max(rate, 0), 100),
-        higherIsBetter: true
-      });
-    }
-    
     // 운동시간 (시작일 기록과 현재 합산 비교)
     if (challenge.targetExerciseDuration) {
       let startDuration = startRecord?.exerciseDuration || 0;
@@ -232,7 +216,6 @@ function ChallengeDetail({ challengeId, onBack }) {
         targetWeight: c.targetWeight || '',
         targetBodyFatPercentage: c.targetBodyFatPercentage || '',
         targetMuscleMass: c.targetMuscleMass || '',
-        targetMusclePercentage: c.targetMusclePercentage || '',
         targetExerciseDuration: c.targetExerciseDuration || ''
       });
       setShowEditModal(true);
@@ -254,7 +237,6 @@ function ChallengeDetail({ challengeId, onBack }) {
         targetWeight: editFormData.targetWeight ? parseFloat(editFormData.targetWeight) : null,
         targetBodyFatPercentage: editFormData.targetBodyFatPercentage ? parseFloat(editFormData.targetBodyFatPercentage) : null,
         targetMuscleMass: editFormData.targetMuscleMass ? parseFloat(editFormData.targetMuscleMass) : null,
-        targetMusclePercentage: editFormData.targetMusclePercentage ? parseFloat(editFormData.targetMusclePercentage) : null,
         targetExerciseDuration: editFormData.targetExerciseDuration ? parseInt(editFormData.targetExerciseDuration) : null
       };
 
@@ -279,7 +261,6 @@ function ChallengeDetail({ challengeId, onBack }) {
       weight: progress.weight || '',
       bodyFatPercentage: progress.bodyFatPercentage || '',
       muscleMass: progress.muscleMass || '',
-      musclePercentage: progress.musclePercentage || '',
       exerciseType: progress.exerciseType || '',
       exerciseDuration: progress.exerciseDuration || ''
     });
@@ -304,7 +285,6 @@ function ChallengeDetail({ challengeId, onBack }) {
         weight: editProgressFormData.weight ? parseFloat(editProgressFormData.weight) : null,
         bodyFatPercentage: editProgressFormData.bodyFatPercentage ? parseFloat(editProgressFormData.bodyFatPercentage) : null,
         muscleMass: editProgressFormData.muscleMass ? parseFloat(editProgressFormData.muscleMass) : null,
-        musclePercentage: editProgressFormData.musclePercentage ? parseFloat(editProgressFormData.musclePercentage) : null,
         exerciseType: editProgressFormData.exerciseType || null,
         exerciseDuration: editProgressFormData.exerciseDuration ? parseInt(editProgressFormData.exerciseDuration) : null
       };
@@ -354,10 +334,6 @@ function ChallengeDetail({ challengeId, onBack }) {
           <div className="target-item">
             <span className="target-label">목표 근육량</span>
             <span className="target-value">{challenge.targetMuscleMass ? `${challenge.targetMuscleMass} kg` : '-'}</span>
-          </div>
-          <div className="target-item">
-            <span className="target-label">목표 근육률</span>
-            <span className="target-value">{challenge.targetMusclePercentage ? `${challenge.targetMusclePercentage}%` : '-'}</span>
           </div>
           <div className="target-item">
             <span className="target-label">목표 운동시간</span>
@@ -415,7 +391,6 @@ function ChallengeDetail({ challengeId, onBack }) {
               (progress.weight != null && progress.weight !== '') ||
               (progress.bodyFatPercentage != null && progress.bodyFatPercentage !== '') ||
               (progress.muscleMass != null && progress.muscleMass !== '') ||
-              (progress.musclePercentage != null && progress.musclePercentage !== '') ||
               (progress.exerciseDuration != null && progress.exerciseDuration !== '');
             return hasData;
           });
@@ -507,14 +482,6 @@ function ChallengeDetail({ challengeId, onBack }) {
                           )}
                         </span>
                       </div>
-                      <div className={`progress-field ${progress.musclePercentageSuccess !== null && progress.musclePercentageSuccess !== undefined ? (progress.musclePercentageSuccess ? 'success' : 'fail') : ''}`}>
-                        <span className="field-label">
-                          근육률: <span className="field-value">{progress.musclePercentage ? `${progress.musclePercentage}%` : '-'}</span>
-                          {progress.musclePercentage != null && previousDay?.musclePercentage != null && (
-                            <span className="field-change">{formatChange(progress.musclePercentage, previousDay.musclePercentage)}</span>
-                          )}
-                        </span>
-                      </div>
                       <div className={`progress-field ${progress.exerciseDurationSuccess !== null && progress.exerciseDurationSuccess !== undefined ? (progress.exerciseDurationSuccess ? 'success' : 'fail') : ''}`}>
                         <span className="field-label">
                           운동시간: <span className="field-value">{progress.exerciseDuration ? `${progress.exerciseDuration}분` : '-'}</span>
@@ -572,18 +539,6 @@ function ChallengeDetail({ challengeId, onBack }) {
                   onChange={handleEditFormChange}
                   step="0.1"
                   placeholder="예: 50"
-                />
-              </div>
-              <div className="form-group">
-                <label htmlFor="edit-targetMusclePercentage">목표 근육률 (%)</label>
-                <input
-                  type="number"
-                  id="edit-targetMusclePercentage"
-                  name="targetMusclePercentage"
-                  value={editFormData.targetMusclePercentage}
-                  onChange={handleEditFormChange}
-                  step="0.1"
-                  placeholder="예: 30"
                 />
               </div>
               <div className="form-group">
@@ -650,18 +605,6 @@ function ChallengeDetail({ challengeId, onBack }) {
                   onChange={handleEditProgressFormChange}
                   step="0.1"
                   placeholder="예: 50"
-                />
-              </div>
-              <div className="form-group">
-                <label htmlFor="edit-musclePercentage">근육률 (%)</label>
-                <input
-                  type="number"
-                  id="edit-musclePercentage"
-                  name="musclePercentage"
-                  value={editProgressFormData.musclePercentage}
-                  onChange={handleEditProgressFormChange}
-                  step="0.1"
-                  placeholder="예: 30"
                 />
               </div>
               <div className="form-group">

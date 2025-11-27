@@ -9,6 +9,12 @@ import com.example.demo.repository.ChallengeRepository;
 import com.example.demo.repository.ChallengeShareRepository;
 import com.example.demo.repository.ExerciseRecordRepository;
 import com.example.demo.repository.UserRepository;
+import com.example.demo.repository.RoutineRepository;
+import com.example.demo.repository.RoutineCheckRepository;
+import com.example.demo.entity.Routine;
+import com.example.demo.entity.RoutineCheck;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
@@ -32,22 +38,29 @@ public class ChallengeShareController {
     private final ChallengeRepository challengeRepository;
     private final UserRepository userRepository;
     private final ExerciseRecordRepository exerciseRecordRepository;
+    private final RoutineRepository routineRepository;
+    private final RoutineCheckRepository routineCheckRepository;
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
     public ChallengeShareController(
             ChallengeShareRepository challengeShareRepository,
             ChallengeRepository challengeRepository,
             UserRepository userRepository,
-            ExerciseRecordRepository exerciseRecordRepository) {
+            ExerciseRecordRepository exerciseRecordRepository,
+            RoutineRepository routineRepository,
+            RoutineCheckRepository routineCheckRepository) {
         this.challengeShareRepository = challengeShareRepository;
         this.challengeRepository = challengeRepository;
         this.userRepository = userRepository;
         this.exerciseRecordRepository = exerciseRecordRepository;
+        this.routineRepository = routineRepository;
+        this.routineCheckRepository = routineCheckRepository;
     }
 
     // 사용자 검색 (ID 또는 username으로)
     @GetMapping("/users/search")
     public ResponseEntity<List<UserSearchResponse>> searchUsers(
-            @RequestParam(required = false) String query,
+            @RequestParam(value = "query", required = false) String query,
             @RequestHeader(value = "X-User-Id", required = false) Long currentUserId) {
         
         final Long finalUserId = currentUserId != null ? currentUserId : 1L;
@@ -102,7 +115,7 @@ public class ChallengeShareController {
                     fromUserId, request.getToUserId(), request.getChallengeId());
 
         // 챌린지 소유자 확인
-        Optional<Challenge> challengeOpt = challengeRepository.findById(request.getChallengeId());
+        Optional<Challenge> challengeOpt = challengeRepository.findById(request.getChallengeId() != null ? request.getChallengeId() : 0L);
         if (challengeOpt.isEmpty()) {
             return ResponseEntity.notFound().build();
         }
@@ -193,8 +206,8 @@ public class ChallengeShareController {
     // 공유 요청 수락/거절
     @PutMapping("/{id}/status")
     public ResponseEntity<ChallengeShareResponse> updateShareStatus(
-            @PathVariable Long id,
-            @RequestParam String status,  // ACCEPTED or REJECTED
+            @PathVariable("id") Long id,
+            @RequestParam("status") String status,  // ACCEPTED or REJECTED
             @RequestHeader(value = "X-User-Id", required = false) Long userId) {
         
         if (userId == null) {
@@ -203,7 +216,7 @@ public class ChallengeShareController {
 
         logger.info("🔄 공유 요청 상태 변경 - id: {}, status: {}, userId: {}", id, status, userId);
 
-        Optional<ChallengeShare> shareOpt = challengeShareRepository.findById(id);
+        Optional<ChallengeShare> shareOpt = challengeShareRepository.findById(id != null ? id : 0L);
         if (shareOpt.isEmpty()) {
             return ResponseEntity.notFound().build();
         }
@@ -228,7 +241,7 @@ public class ChallengeShareController {
     // 공유된 챌린지 상세 조회 (목표 대비 차이만 표시)
     @GetMapping("/accepted/{shareId}/detail")
     public ResponseEntity<SharedChallengeDetailResponse> getSharedChallengeDetail(
-            @PathVariable Long shareId,
+            @PathVariable("shareId") Long shareId,
             @RequestHeader(value = "X-User-Id", required = false) Long userId) {
         
         if (userId == null) {
@@ -237,7 +250,7 @@ public class ChallengeShareController {
 
         logger.info("📅 공유된 챌린지 상세 조회 - shareId: {}, userId: {}", shareId, userId);
 
-        Optional<ChallengeShare> shareOpt = challengeShareRepository.findById(shareId);
+        Optional<ChallengeShare> shareOpt = challengeShareRepository.findById(shareId != null ? shareId : 0L);
         if (shareOpt.isEmpty()) {
             return ResponseEntity.notFound().build();
         }
@@ -247,7 +260,7 @@ public class ChallengeShareController {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         }
 
-        Challenge challenge = challengeRepository.findById(share.getChallengeId())
+        Challenge challenge = challengeRepository.findById(share.getChallengeId() != null ? share.getChallengeId() : 0L)
                 .orElse(null);
         if (challenge == null) {
             return ResponseEntity.notFound().build();
@@ -262,6 +275,45 @@ public class ChallengeShareController {
 
         Map<LocalDate, ExerciseRecord> recordMap = records.stream()
                 .collect(Collectors.toMap(ExerciseRecord::getRecordDate, r -> r));
+
+        // 원래 소유자의 루틴 설정 조회
+        Optional<Routine> morningRoutineOpt = routineRepository.findByUserIdAndRoutineType(share.getFromUserId(), "MORNING");
+        Optional<Routine> eveningRoutineOpt = routineRepository.findByUserIdAndRoutineType(share.getFromUserId(), "EVENING");
+        
+        List<String> morningRoutineItems = new ArrayList<>();
+        List<String> eveningRoutineItems = new ArrayList<>();
+        
+        if (morningRoutineOpt.isPresent()) {
+            try {
+                String itemsJson = morningRoutineOpt.get().getRoutineItems();
+                if (itemsJson != null && !itemsJson.isEmpty()) {
+                    morningRoutineItems = objectMapper.readValue(itemsJson, new TypeReference<List<String>>() {});
+                }
+            } catch (Exception e) {
+                logger.error("아침루틴 파싱 오류", e);
+            }
+        }
+        
+        if (eveningRoutineOpt.isPresent()) {
+            try {
+                String itemsJson = eveningRoutineOpt.get().getRoutineItems();
+                if (itemsJson != null && !itemsJson.isEmpty()) {
+                    eveningRoutineItems = objectMapper.readValue(itemsJson, new TypeReference<List<String>>() {});
+                }
+            } catch (Exception e) {
+                logger.error("저녁루틴 파싱 오류", e);
+            }
+        }
+
+        // 챌린지 기간 동안의 루틴 체크 데이터 조회
+        List<RoutineCheck> routineChecks = routineCheckRepository
+                .findByUserIdAndCheckDateBetween(share.getFromUserId(), challenge.getStartDate(), challenge.getEndDate());
+        
+        Map<LocalDate, Map<String, RoutineCheck>> routineCheckMap = routineChecks.stream()
+                .collect(Collectors.groupingBy(
+                    RoutineCheck::getCheckDate,
+                    Collectors.toMap(RoutineCheck::getRoutineType, rc -> rc)
+                ));
 
         // 일별 진행상황 생성 (목표 대비 차이만)
         List<SharedChallengeDetailResponse.DailyProgress> dailyProgress = new ArrayList<>();
@@ -284,9 +336,6 @@ public class ChallengeShareController {
                 if (record.getMuscleMass() != null && challenge.getTargetMuscleMass() != null) {
                     progress.setMuscleMassDiff(record.getMuscleMass() - challenge.getTargetMuscleMass());
                 }
-                if (record.getMusclePercentage() != null && challenge.getTargetMusclePercentage() != null) {
-                    progress.setMusclePercentageDiff(record.getMusclePercentage() - challenge.getTargetMusclePercentage());
-                }
                 if (record.getExerciseDuration() != null && challenge.getTargetExerciseDuration() != null) {
                     progress.setExerciseDurationDiff(record.getExerciseDuration() - challenge.getTargetExerciseDuration());
                 }
@@ -296,9 +345,39 @@ public class ChallengeShareController {
             progress.setWeightSuccess(checkSuccess(record != null ? record.getWeight() : null, challenge.getTargetWeight(), false));
             progress.setBodyFatSuccess(checkSuccess(record != null ? record.getBodyFatPercentage() : null, challenge.getTargetBodyFatPercentage(), false));
             progress.setMuscleMassSuccess(checkSuccess(record != null ? record.getMuscleMass() : null, challenge.getTargetMuscleMass(), true));
-            progress.setMusclePercentageSuccess(checkSuccess(record != null ? record.getMusclePercentage() : null, challenge.getTargetMusclePercentage(), true));
             progress.setExerciseDurationSuccess(checkSuccess(record != null && record.getExerciseDuration() != null ? record.getExerciseDuration().doubleValue() : null,
                     challenge.getTargetExerciseDuration() != null ? challenge.getTargetExerciseDuration().doubleValue() : null, true));
+
+            // 루틴 체크 정보 추가
+            Map<String, RoutineCheck> dateRoutineChecks = routineCheckMap.getOrDefault(currentDate, new java.util.HashMap<>());
+            
+            // 아침루틴 정보
+            progress.setMorningRoutineTotal(morningRoutineItems.size());
+            RoutineCheck morningCheck = dateRoutineChecks.get("MORNING");
+            if (morningCheck != null && morningCheck.getCheckedItems() != null && !morningCheck.getCheckedItems().isEmpty()) {
+                try {
+                    List<String> checkedItems = objectMapper.readValue(morningCheck.getCheckedItems(), new TypeReference<List<String>>() {});
+                    progress.setMorningRoutineChecked(checkedItems != null ? checkedItems.size() : 0);
+                } catch (Exception e) {
+                    progress.setMorningRoutineChecked(0);
+                }
+            } else {
+                progress.setMorningRoutineChecked(0);
+            }
+            
+            // 저녁루틴 정보
+            progress.setEveningRoutineTotal(eveningRoutineItems.size());
+            RoutineCheck eveningCheck = dateRoutineChecks.get("EVENING");
+            if (eveningCheck != null && eveningCheck.getCheckedItems() != null && !eveningCheck.getCheckedItems().isEmpty()) {
+                try {
+                    List<String> checkedItems = objectMapper.readValue(eveningCheck.getCheckedItems(), new TypeReference<List<String>>() {});
+                    progress.setEveningRoutineChecked(checkedItems != null ? checkedItems.size() : 0);
+                } catch (Exception e) {
+                    progress.setEveningRoutineChecked(0);
+                }
+            } else {
+                progress.setEveningRoutineChecked(0);
+            }
 
             dailyProgress.add(progress);
             currentDate = currentDate.plusDays(1);
@@ -311,9 +390,9 @@ public class ChallengeShareController {
         overall.setTotalDays(dailyProgress.size());
 
         int weightSuccess = 0, bodyFatSuccess = 0, muscleMassSuccess = 0,
-                musclePercentageSuccess = 0, exerciseDurationSuccess = 0;
+                exerciseDurationSuccess = 0;
         int weightRecordedDays = 0, bodyFatRecordedDays = 0, muscleMassRecordedDays = 0,
-                musclePercentageRecordedDays = 0, exerciseDurationRecordedDays = 0;
+                exerciseDurationRecordedDays = 0;
 
         for (SharedChallengeDetailResponse.DailyProgress dp : dailyProgress) {
             if (dp.getWeightDiff() != null) {
@@ -328,10 +407,6 @@ public class ChallengeShareController {
                 muscleMassRecordedDays++;
                 if (dp.isMuscleMassSuccess()) muscleMassSuccess++;
             }
-            if (dp.getMusclePercentageDiff() != null) {
-                musclePercentageRecordedDays++;
-                if (dp.isMusclePercentageSuccess()) musclePercentageSuccess++;
-            }
             if (dp.getExerciseDurationDiff() != null) {
                 exerciseDurationRecordedDays++;
                 if (dp.isExerciseDurationSuccess()) exerciseDurationSuccess++;
@@ -341,18 +416,45 @@ public class ChallengeShareController {
         overall.setWeightSuccessCount(weightSuccess);
         overall.setBodyFatSuccessCount(bodyFatSuccess);
         overall.setMuscleMassSuccessCount(muscleMassSuccess);
-        overall.setMusclePercentageSuccessCount(musclePercentageSuccess);
         overall.setExerciseDurationSuccessCount(exerciseDurationSuccess);
         overall.setWeightRecordedDays(weightRecordedDays);
         overall.setBodyFatRecordedDays(bodyFatRecordedDays);
         overall.setMuscleMassRecordedDays(muscleMassRecordedDays);
-        overall.setMusclePercentageRecordedDays(musclePercentageRecordedDays);
         overall.setExerciseDurationRecordedDays(exerciseDurationRecordedDays);
         overall.setWeightSuccessRate(weightRecordedDays > 0 ? (double) weightSuccess / weightRecordedDays * 100 : 0);
         overall.setBodyFatSuccessRate(bodyFatRecordedDays > 0 ? (double) bodyFatSuccess / bodyFatRecordedDays * 100 : 0);
         overall.setMuscleMassSuccessRate(muscleMassRecordedDays > 0 ? (double) muscleMassSuccess / muscleMassRecordedDays * 100 : 0);
-        overall.setMusclePercentageSuccessRate(musclePercentageRecordedDays > 0 ? (double) musclePercentageSuccess / musclePercentageRecordedDays * 100 : 0);
         overall.setExerciseDurationSuccessRate(exerciseDurationRecordedDays > 0 ? (double) exerciseDurationSuccess / exerciseDurationRecordedDays * 100 : 0);
+
+        // 루틴 체크 성공률 계산
+        int morningRoutineSuccessDays = 0;
+        int eveningRoutineSuccessDays = 0;
+        int morningRoutineRecordedDays = 0;
+        int eveningRoutineRecordedDays = 0;
+        
+        for (SharedChallengeDetailResponse.DailyProgress dp : dailyProgress) {
+            if (dp.getMorningRoutineTotal() != null && dp.getMorningRoutineTotal() > 0) {
+                morningRoutineRecordedDays++;
+                if (dp.getMorningRoutineChecked() != null && 
+                    dp.getMorningRoutineChecked().equals(dp.getMorningRoutineTotal())) {
+                    morningRoutineSuccessDays++;
+                }
+            }
+            if (dp.getEveningRoutineTotal() != null && dp.getEveningRoutineTotal() > 0) {
+                eveningRoutineRecordedDays++;
+                if (dp.getEveningRoutineChecked() != null && 
+                    dp.getEveningRoutineChecked().equals(dp.getEveningRoutineTotal())) {
+                    eveningRoutineSuccessDays++;
+                }
+            }
+        }
+        
+        overall.setMorningRoutineSuccessDays(morningRoutineSuccessDays);
+        overall.setEveningRoutineSuccessDays(eveningRoutineSuccessDays);
+        overall.setMorningRoutineRecordedDays(morningRoutineRecordedDays);
+        overall.setEveningRoutineRecordedDays(eveningRoutineRecordedDays);
+        overall.setMorningRoutineSuccessRate(morningRoutineRecordedDays > 0 ? (double) morningRoutineSuccessDays / morningRoutineRecordedDays * 100 : 0);
+        overall.setEveningRoutineSuccessRate(eveningRoutineRecordedDays > 0 ? (double) eveningRoutineSuccessDays / eveningRoutineRecordedDays * 100 : 0);
 
         response.setOverallProgress(overall);
 
@@ -380,7 +482,6 @@ public class ChallengeShareController {
         response.setTargetWeight(challenge.getTargetWeight());
         response.setTargetBodyFatPercentage(challenge.getTargetBodyFatPercentage());
         response.setTargetMuscleMass(challenge.getTargetMuscleMass());
-        response.setTargetMusclePercentage(challenge.getTargetMusclePercentage());
         response.setTargetExerciseDuration(challenge.getTargetExerciseDuration());
         response.setCreatedAt(challenge.getCreatedAt());
         response.setUpdatedAt(challenge.getUpdatedAt());
@@ -403,13 +504,13 @@ public class ChallengeShareController {
         response.setUpdatedAt(share.getUpdatedAt());
 
         // 사용자 이름 조회
-        Optional<User> fromUser = userRepository.findById(share.getFromUserId());
+        Optional<User> fromUser = userRepository.findById(share.getFromUserId() != null ? share.getFromUserId() : 0L);
         if (fromUser.isPresent()) {
             response.setFromUserName(fromUser.get().getName() != null ? fromUser.get().getName() : fromUser.get().getUsername());
         }
 
         // 챌린지 이름 조회
-        Optional<Challenge> challenge = challengeRepository.findById(share.getChallengeId());
+        Optional<Challenge> challenge = challengeRepository.findById(share.getChallengeId() != null ? share.getChallengeId() : 0L);
         if (challenge.isPresent()) {
             response.setChallengeName(challenge.get().getName());
         }

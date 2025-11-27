@@ -25,8 +25,8 @@ public class BoardController {
 
     // ✅ 단일 게시글 조회
     @GetMapping("/{id}")
-    public Board getBoardById(@PathVariable Long id) {
-        return boardRepository.findById(id).orElse(null);
+    public Board getBoardById(@PathVariable("id") Long id) {
+        return boardRepository.findById(id != null ? id : 0L).orElse(null);
     }
 
 }

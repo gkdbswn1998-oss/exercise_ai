@@ -10,6 +10,8 @@ import ChallengeDetail from './ChallengeDetail';
 import ShareList from './ShareList';
 import ShareForm from './ShareForm';
 import ShareDetail from './ShareDetail';
+import RoutineSetting from './RoutineSetting';
+import RoutineCheck from './RoutineCheck';
 import Navbar from './Navbar';
 import { isAuthenticated, getCurrentUser } from './auth';
 
@@ -22,6 +24,7 @@ function App() {
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [shareView, setShareView] = useState('list'); // 'list', 'form', 'detail'
   const [selectedShareId, setSelectedShareId] = useState(null);
+  const [routineView, setRoutineView] = useState('check'); // 'setting' or 'check'
 
   useEffect(() => {
     // 페이지 로드 시 로그인 상태 확인
@@ -53,9 +56,11 @@ function App() {
       if (page === 'challenge') {
         setChallengeView('list');
         setSelectedChallengeId(null);
-      } else if (page === 'share') {
+      } else       if (page === 'share') {
         setShareView('list');
         setSelectedShareId(null);
+      } else if (page === 'routine') {
+        setRoutineView('check');
       }
     };
 
@@ -146,6 +151,12 @@ function App() {
                 shareId={selectedShareId}
                 onBack={handleBackFromShareDetail}
               />
+            )
+          ) : currentPage === 'routine' ? (
+            routineView === 'setting' ? (
+              <RoutineSetting onNavigateToCheck={() => setRoutineView('check')} />
+            ) : (
+              <RoutineCheck onNavigateToSetting={() => setRoutineView('setting')} />
             )
           ) : null}
         </div>

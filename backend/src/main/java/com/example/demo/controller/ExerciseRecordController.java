@@ -45,7 +45,7 @@ public class ExerciseRecordController {
     // 특정 날짜의 기록 조회 (또는 생성)
     @GetMapping("/date/{date}")
     public ResponseEntity<ExerciseRecordResponse> getRecordByDate(
-            @PathVariable String date,
+            @PathVariable("date") String date,
             @RequestHeader(value = "X-User-Id", required = false) Long userId) {
         
         // 임시로 userId를 1로 설정 (실제로는 토큰에서 가져와야 함)
@@ -102,7 +102,6 @@ public class ExerciseRecordController {
             record.setWeight(request.getWeight());
             record.setBodyFatPercentage(request.getBodyFatPercentage());
             record.setMuscleMass(request.getMuscleMass());
-            record.setMusclePercentage(request.getMusclePercentage());
             record.setExerciseType(request.getExerciseType());
             record.setExerciseDuration(request.getExerciseDuration());
             record.setImageUrl(request.getImageUrl());
@@ -142,8 +141,8 @@ public class ExerciseRecordController {
     // 기간별 기록 조회
     @GetMapping("/range")
     public ResponseEntity<List<ExerciseRecordResponse>> getRecordsByDateRange(
-            @RequestParam String startDate,
-            @RequestParam String endDate,
+            @RequestParam("startDate") String startDate,
+            @RequestParam("endDate") String endDate,
             @RequestHeader(value = "X-User-Id", required = false) Long userId) {
         
         // 임시로 userId를 1로 설정
@@ -266,10 +265,12 @@ public class ExerciseRecordController {
     
     // 이미지 파일 조회 엔드포인트
     @GetMapping("/images/{filename:.+}")
-    public ResponseEntity<Resource> getImage(@PathVariable String filename) {
+    @SuppressWarnings("null")
+    public ResponseEntity<Resource> getImage(@PathVariable("filename") String filename) {
         try {
             Path filePath = Paths.get(uploadDir).resolve(filename).normalize();
-            Resource resource = new UrlResource(filePath.toUri());
+            java.net.URI uri = filePath.toAbsolutePath().toUri();
+            Resource resource = new UrlResource(uri);
             
             if (resource.exists() && resource.isReadable()) {
                 String contentType = "image/jpeg"; // 기본값
@@ -303,7 +304,6 @@ public class ExerciseRecordController {
         response.setWeight(record.getWeight());
         response.setBodyFatPercentage(record.getBodyFatPercentage());
         response.setMuscleMass(record.getMuscleMass());
-        response.setMusclePercentage(record.getMusclePercentage());
         response.setExerciseType(record.getExerciseType());
         response.setExerciseDuration(record.getExerciseDuration());
         response.setImageUrl(record.getImageUrl());

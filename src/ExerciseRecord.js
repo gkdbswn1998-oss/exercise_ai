@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import './ExerciseRecord.css';
 import { getCurrentUser } from './auth';
 import { getExerciseRecord, saveExerciseRecord, getExerciseRecordsByDateRange } from './exerciseApi';
+import { getRoutineByType, getRoutineChecksByDate, saveRoutineCheck } from './routineApi';
 
 function ExerciseRecord() {
   const [selectedDate, setSelectedDate] = useState(new Date());
@@ -9,8 +10,6 @@ function ExerciseRecord() {
     weight: '',
     bodyFatPercentage: '',
     muscleMass: '',
-    musclePercentage: '',
-    exerciseType: '',
     exerciseDuration: ''
   });
   const [loading, setLoading] = useState(false);
@@ -18,6 +17,11 @@ function ExerciseRecord() {
   const [message, setMessage] = useState('');
   const [recordedDates, setRecordedDates] = useState(new Set()); // 기록이 있는 날짜들
   const [incompleteRecordDates, setIncompleteRecordDates] = useState(new Set()); // 불완전한 기록이 있는 날짜들
+  const [morningRoutine, setMorningRoutine] = useState([]); // 아침 루틴 항목들
+  const [eveningRoutine, setEveningRoutine] = useState([]); // 저녁 루틴 항목들
+  const [morningChecked, setMorningChecked] = useState([]); // 아침 루틴 체크된 항목들
+  const [eveningChecked, setEveningChecked] = useState([]); // 저녁 루틴 체크된 항목들
+  const [routineSaving, setRoutineSaving] = useState(false);
 
   // 날짜 포맷팅
   const formatDate = (date) => {
@@ -36,6 +40,8 @@ function ExerciseRecord() {
   // 선택된 날짜의 기록 불러오기
   useEffect(() => {
     loadRecord();
+    loadRoutines();
+    loadRoutineChecks();
   }, [selectedDate]);
 
   // 현재 월의 모든 기록 불러오기 (캘린더 표시용)
@@ -55,8 +61,6 @@ function ExerciseRecord() {
           weight: record.weight || '',
           bodyFatPercentage: record.bodyFatPercentage || '',
           muscleMass: record.muscleMass || '',
-          musclePercentage: record.musclePercentage || '',
-          exerciseType: record.exerciseType || '',
           exerciseDuration: record.exerciseDuration || ''
         });
         
@@ -66,8 +70,6 @@ function ExerciseRecord() {
           weight: '',
           bodyFatPercentage: '',
           muscleMass: '',
-          musclePercentage: '',
-          exerciseType: '',
           exerciseDuration: ''
         });
         // 기록이 없으면 불완전한 기록 목록에서도 제거
@@ -165,8 +167,6 @@ function ExerciseRecord() {
             const hasAllFields = record.weight && 
                                 record.bodyFatPercentage && 
                                 record.muscleMass && 
-                                record.musclePercentage && 
-                                record.exerciseType && 
                                 record.exerciseDuration;
             
             if (hasAllFields) {
@@ -176,8 +176,6 @@ function ExerciseRecord() {
               const hasAnyField = record.weight || 
                                  record.bodyFatPercentage || 
                                  record.muscleMass || 
-                                 record.musclePercentage || 
-                                 record.exerciseType || 
                                  record.exerciseDuration ||
                                  record.imageUrl;
               if (hasAnyField) {
@@ -215,15 +213,11 @@ function ExerciseRecord() {
         const hasAllFields = formData.weight && 
                             formData.bodyFatPercentage && 
                             formData.muscleMass && 
-                            formData.musclePercentage && 
-                            formData.exerciseType && 
                             formData.exerciseDuration;
         
         const hasAnyField = formData.weight || 
                            formData.bodyFatPercentage || 
                            formData.muscleMass || 
-                           formData.musclePercentage || 
-                           formData.exerciseType || 
                            formData.exerciseDuration;
         
         if (hasAllFields) {
@@ -297,6 +291,70 @@ function ExerciseRecord() {
 
   const handleDateClick = (date) => {
     setSelectedDate(date);
+  };
+
+  // 루틴 설정 불러오기
+  const loadRoutines = async () => {
+    try {
+      const morning = await getRoutineByType('MORNING');
+      const evening = await getRoutineByType('EVENING');
+      
+      setMorningRoutine(morning?.routineItems || []);
+      setEveningRoutine(evening?.routineItems || []);
+    } catch (error) {
+      console.error('루틴 조회 오류:', error);
+    }
+  };
+
+  // 루틴 체크 불러오기
+  const loadRoutineChecks = async () => {
+    try {
+      const dateStr = formatDate(selectedDate);
+      const checks = await getRoutineChecksByDate(dateStr);
+      
+      const morningCheck = checks.find(c => c.routineType === 'MORNING');
+      const eveningCheck = checks.find(c => c.routineType === 'EVENING');
+      
+      setMorningChecked(morningCheck?.checkedItems || []);
+      setEveningChecked(eveningCheck?.checkedItems || []);
+    } catch (error) {
+      console.error('루틴 체크 조회 오류:', error);
+    }
+  };
+
+  // 루틴 체크 토글
+  const handleRoutineItemToggle = async (routineType, item) => {
+    const currentChecked = routineType === 'MORNING' ? morningChecked : eveningChecked;
+    const newChecked = currentChecked.includes(item)
+      ? currentChecked.filter(i => i !== item)
+      : [...currentChecked, item];
+
+    if (routineType === 'MORNING') {
+      setMorningChecked(newChecked);
+    } else {
+      setEveningChecked(newChecked);
+    }
+
+    setRoutineSaving(true);
+
+    try {
+      const dateStr = formatDate(selectedDate);
+      await saveRoutineCheck({
+        checkDate: dateStr,
+        routineType: routineType,
+        checkedItems: newChecked
+      });
+    } catch (error) {
+      console.error('루틴 체크 저장 오류:', error);
+      // 원래 상태로 복구
+      if (routineType === 'MORNING') {
+        setMorningChecked(currentChecked);
+      } else {
+        setEveningChecked(currentChecked);
+      }
+    } finally {
+      setRoutineSaving(false);
+    }
   };
 
   const handlePrevMonth = () => {
@@ -406,33 +464,6 @@ function ExerciseRecord() {
               </div>
 
               <div className="form-group">
-                <label htmlFor="musclePercentage">근육률 (%)</label>
-                <input
-                  type="number"
-                  id="musclePercentage"
-                  name="musclePercentage"
-                  value={formData.musclePercentage}
-                  onChange={handleChange}
-                  placeholder="예: 45.0"
-                  step="0.1"
-                />
-              </div>
-            </div>
-
-            <div className="form-row">
-              <div className="form-group">
-                <label htmlFor="exerciseType">운동종류</label>
-                <input
-                  type="text"
-                  id="exerciseType"
-                  name="exerciseType"
-                  value={formData.exerciseType}
-                  onChange={handleChange}
-                  placeholder="예: 러닝, 헬스, 테니스"
-                />
-              </div>
-
-              <div className="form-group">
                 <label htmlFor="exerciseDuration">운동시간 (분)</label>
                 <input
                   type="number"
@@ -449,6 +480,55 @@ function ExerciseRecord() {
             {message && (
               <div className={`message ${message.includes('저장') ? 'success' : 'error'}`}>
                 {message}
+              </div>
+            )}
+
+            {/* 루틴 체크 섹션 */}
+            {(morningRoutine.length > 0 || eveningRoutine.length > 0) && (
+              <div className="routine-check-section">
+                <div className="routine-check-row">
+                  {morningRoutine.length > 0 && (
+                    <div className="routine-check-group">
+                      <h4>아침 루틴</h4>
+                      <div className="routine-check-items">
+                        {morningRoutine.map(item => (
+                          <label key={item} className="routine-check-item">
+                            <input
+                              type="checkbox"
+                              checked={morningChecked.includes(item)}
+                              onChange={() => handleRoutineItemToggle('MORNING', item)}
+                              disabled={routineSaving}
+                            />
+                            <span className={morningChecked.includes(item) ? 'checked' : ''}>
+                              {item}
+                            </span>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {eveningRoutine.length > 0 && (
+                    <div className="routine-check-group">
+                      <h4>운동 루틴</h4>
+                      <div className="routine-check-items">
+                        {eveningRoutine.map(item => (
+                          <label key={item} className="routine-check-item">
+                            <input
+                              type="checkbox"
+                              checked={eveningChecked.includes(item)}
+                              onChange={() => handleRoutineItemToggle('EVENING', item)}
+                              disabled={routineSaving}
+                            />
+                            <span className={eveningChecked.includes(item) ? 'checked' : ''}>
+                              {item}
+                            </span>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
             )}
 
