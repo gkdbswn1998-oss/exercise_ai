@@ -2,7 +2,7 @@
  * 루틴 관련 API 함수
  */
 
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8080/api';
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://13.124.207.117:8080/api';
 
 /**
  * 모든 루틴 조회

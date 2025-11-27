@@ -30,7 +30,7 @@ import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/challenge-shares")
-@CrossOrigin(origins = "http://localhost:3000")
+@CrossOrigin(origins = "http://13.124.207.117:3000")
 public class ChallengeShareController {
 
     private static final Logger logger = LoggerFactory.getLogger(ChallengeShareController.class);
